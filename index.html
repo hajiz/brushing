@@ -1,0 +1,153 @@
+<html>
+<head>
+<title>My Charting Library</title>
+<style type="text/css">
+div {
+	border: 1px solid;
+	width: 40%;
+	height: 40%;
+	float: left;
+}
+body {
+	font: 12px sans-serif;
+}
+
+.bar rect {
+}
+
+.bar text.value {
+	fill: white;
+}
+
+.axis {
+	shape-rendering: crispEdges;
+}
+
+.axis path {
+	fill: none;
+}
+
+.x.axis line {
+	stroke: #fff;
+	stroke-opacity: .8;
+}
+
+.y.axis path {
+	stroke: black;
+}
+
+button.highlighted {
+	color: red;
+	background-color: white;
+}
+</style>
+<script type="text/javascript" src="d3.js"></script>
+<script type="text/javascript" src="jquery.js"></script>
+
+<script type="text/javascript" src="dataStore.js"></script>
+<script type="text/javascript" src="selection.js"></script>
+<script type="text/javascript" src="charting.js"></script>
+<script type="text/javascript" src="appearance.js"></script>
+<script type="text/javascript" src="broadcast.js"></script>
+
+<script type="text/javascript">
+var store;
+var temp;
+var my_selection = new selection();
+var other_selection = new selection();
+var base_selection = my_selection;
+var hub = new broadcast();
+$(document).ready(function () {
+	store = new dataStore("efashion.json", loaded);
+});
+
+function loaded (success) {
+	if (!success)
+		alert ("no data loaded!");
+// 	var s = new selection ("Year", [2002]);
+// 	s.append("Quarter", ["Q1", "Q2"]);
+// 	
+// 	var ss = new selection ("Year", [2003]);
+// 	ss.append("Quarter", ["Q1", "Q2"]);
+// 	
+// 	var awesome = store.getAggregatedColumns([{"name":"Quarter", "aggregate":null},{"name":"Profit#", "aggregate":"sum"}], ["Quarter"], [s, ss, new combined_selection(s, ss, "xor"), new all_selector()]);
+// 	temp = awesome;
+// 	return;
+// 	alert(s);
+// 	alert(s.contains({"Name":"Amir", "Age": 12}));
+// 	s.remove("Name", ["Amir"]);
+// 	alert(s);
+// 	alert(s.contains({"Name":"Amir", "Age": 12}));
+// 	temp = s;
+	/*var list = store.getColumns();
+	$.each(list, function(i, v) {
+		if (store.getColumn(v).type == "interval")
+			$("#yselect").append("<option>"+v+"</option>");
+		else
+			$("#xselect").append("<option>"+v+"</option>");
+	});
+	if (store.getColumn($("#xselect").val()).type == "nominal")
+		$("#aggregation").hide();
+	else
+		$("#aggregation").show();
+	$("#change1").click(function () {
+		var chart1 = new chart ("bar", $("#xselect").val(), null, $("#yselect").val(), $("#aggregation").val(), store, base_selection);
+		chart1.isStacked = $("#stacked").is(":checked");
+		hub.addChart(chart1);
+		chart1.draw($("#main_chart1"));
+	});
+	$("#change2").click(function () {
+		var chart2 = new chart ("bar", $("#xselect").val(), null, $("#yselect").val(), $("#aggregation").val(), store, base_selection);
+		chart2.isStacked = $("#stacked").is(":checked");
+		hub.addChart(chart2);
+		chart2.draw($("#main_chart2"));
+	});
+	$("#xselect").change(function () {
+		if (store.getColumn($(this).val()).type == "nominal")
+			$("#aggregation").hide();
+		else
+			$("#aggregation").show();
+	});*/
+	$("#stacked").change(function () {
+		hub.changeAttr("isStacked", $("#stacked").is(":checked"));
+		hub.broadcast();
+	});
+	$("#my").click(function () { base_selection = my_selection; $(".highlighted").removeClass("highlighted"); $(this).addClass("highlighted"); });
+	$("#other").click(function () { base_selection = other_selection; $(".highlighted").removeClass("highlighted"); $(this).addClass("highlighted"); });
+	
+	// default drawing
+	var dimensions = ["Year", "Quarter", "Lines", "State"];
+	for (var i = 0; i < 4; i ++) {
+		var _chart = new chart ("bar", dimensions[i], null, "Sales revenue#", "sum", store, base_selection);
+		_chart.isStacked = $("#stacked").is(":checked");
+		hub.addChart(_chart);
+		_chart.draw($("#main_chart"+(i+1)));
+	}
+	
+	//var chart1 = new chart ("bar", "Department", null, "Age", "sum", store);
+	//chart1.draw($("#main_chart"));
+}
+</script>
+</head>
+<body>
+<!--
+X axis:
+<select id="xselect"></select><br>
+Y axis:
+<select id="yselect"></select>
+<select id="aggregation">
+<option value="sum">Sum</option>
+<option value="average">Average</option>
+<option value="min">Min</option>
+<option value="max">Max</option>
+</select>
+<br>-->
+<!--<button id="change1">Show in 1st</button><button id="change2">Show in 2nd</button>--><input id="stacked" type="checkbox">Stacked</input>
+<span id="selection"></span><br>
+<button id="my" class="highlighted">Your Selection</button><button id="other">Other's Selection</button><br>
+<div id="main_chart1"></div>
+<div id="main_chart2"></div>
+<div id="main_chart3"></div>
+<div id="main_chart4"></div>
+</body>
+</html>
