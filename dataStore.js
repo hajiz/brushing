@@ -90,10 +90,10 @@ dataStore.prototype.getAggregatedColumns = function (columns, over, selections) 
 				if (s_v.contains(v)) {
 					$.each(column_names, function (c_i, c_v) {
 						if (object[c_v] == undefined) object[c_v] = [];
-						if (count[c_v] == undefined) count[c_v] = [];
+						if (count[index] == undefined) count[index] = [];
 						if (object[c_v][s_i] == undefined) {
 							object[c_v][s_i] = v[c_v];
-							count[c_v][s_i] = 1;
+							count[index][s_i] = 1;
 						} else {
 							switch (aggregation[c_v]) {
 								case 'sum':
@@ -113,19 +113,24 @@ dataStore.prototype.getAggregatedColumns = function (columns, over, selections) 
 								default:
 									object[c_v][s_i] = v[c_v];
 							}
-							count[c_v][s_i] ++;
+							count[index][s_i] ++;
 						}
 					});
 				}
 			});
 			out[index] = object;
 		});
+		temp = count;
 		var refined = [];
 		$.each(out, function (i, v) {
 			if ($.isEmptyObject(v)) return;
 			$.each(column_names, function (ii, vv) {
-				if(aggregation[vv] == "average")
-					v[vv] = v[vv] / count[v[over]];
+				if(aggregation[vv] == "average") {
+					$.each(selections, function (s_i, s_v) {
+						if (v[vv][s_i] != undefined && count[v[over]] != undefined && count[v[over]][s_i] != undefined)
+							v[vv][s_i] = v[vv][s_i] / count[v[over]][s_i];
+					});
+				}
 			});
 			refined.push(v);
 		});

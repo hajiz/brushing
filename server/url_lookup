@@ -1,0 +1,5 @@
+http://142.104.68.169/server/brushing/joinsession.php?session=2&name=amir
+http://142.104.68.169/server/brushing/createsession.php?name=test&dataset=shopping
+http://142.104.68.169/server/brushing/listsession.php
+http://142.104.68.169/server/brushing/getselection.php?session=1&user=1
+http://142.104.68.169/server/brushing/setselection.php?session=2&user=1&selection={%22a%22:%22b%22}

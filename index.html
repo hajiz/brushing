@@ -1,46 +1,7 @@
 <html>
 <head>
 <title>My Charting Library</title>
-<style type="text/css">
-div {
-	border: 1px solid;
-	width: 40%;
-	height: 40%;
-	float: left;
-}
-body {
-	font: 12px sans-serif;
-}
-
-.bar rect {
-}
-
-.bar text.value {
-	fill: white;
-}
-
-.axis {
-	shape-rendering: crispEdges;
-}
-
-.axis path {
-	fill: none;
-}
-
-.x.axis line {
-	stroke: #fff;
-	stroke-opacity: .8;
-}
-
-.y.axis path {
-	stroke: black;
-}
-
-button.highlighted {
-	color: red;
-	background-color: white;
-}
-</style>
+<link href="style.css" rel="stylesheet" />
 <script type="text/javascript" src="d3.js"></script>
 <script type="text/javascript" src="jquery.js"></script>
 
@@ -117,8 +78,11 @@ function loaded (success) {
 	
 	// default drawing
 	var dimensions = ["Year", "Quarter", "Lines", "State"];
+	var measure = "Sales revenue#";
+	//var dimensions = ["Gender", "Shopping Mall", "Transport", "Frequency"];
+	//var measure = "Average Rating";
 	for (var i = 0; i < 4; i ++) {
-		var _chart = new chart ("bar", dimensions[i], null, "Sales revenue#", "sum", store, base_selection);
+		var _chart = new chart ("bar", dimensions[i], null, measure, "sum", store, base_selection);
 		_chart.isStacked = $("#stacked").is(":checked");
 		hub.addChart(_chart);
 		_chart.draw($("#main_chart"+(i+1)));

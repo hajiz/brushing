@@ -4,7 +4,6 @@ function draw (data, label_column, value_column, container, coloring, selection_
 	// for now just base and previous is defined
 	// selection_listener is also optional and sets a listener to click event on bars
 	$(container).html("");
-	temp = data;
 	
 	if (coloring == undefined || ! coloring.length)
 		coloring = [{"color":"steelblue", "opacity":1, "stackon":"base"}];
@@ -163,7 +162,7 @@ function chart (type, x, x_aggregate, y, y_aggregate, store, selection_object) {
 									new combined_selection(other_selection, my_selection, "not")]);
 			var coloring = [{"color":"white", "border":"black solid", "opacity":1,"stackon":"base", "text":"none"}, 
 				{"color":"red", "border":"none", "opacity":1,"stackon":"base", "text":"none"}, 
-				{"color":"red", "border":"black dashed", "opacity":2*highlighting_opacity,"stackon":"previous", "text":"none"},
+				{"color":"red", "border":"black dashed", "opacity":highlighting_opacity,"stackon":"previous", "text":"none"},
 				{"color":"none", "border":"black dashed", "opacity":highlighting_opacity,"stackon":"previous", "text":"none"}];
 		} else {
 			var result = this.store.getAggregatedColumns(this.compact(), [this.x], 
