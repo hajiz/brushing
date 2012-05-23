@@ -5,6 +5,8 @@ function broadcast () {
 			this.charts.push(chart);
 	};
 	this.broadcast = function () {
+		upload_selection();
+		$("#selection").html("Yours {" + my_selection.toString() + "}, " + my_othersname + " {" + other_selection.toString() + "}");
 		$.each (this.charts, function (i, v) {
 			v.redraw();
 		});

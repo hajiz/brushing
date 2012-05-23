@@ -1,47 +1,27 @@
 <html>
 <head>
 <title>Enter brushing app</title>
-<style>
-body {
-	margin: 50px;
-}
-h1 {
-	text-align:center;
-}
+<link href="style.css" rel="stylesheet" />
+<script type="text/javascript" src="d3.js"></script>
+<script type="text/javascript" src="jquery.js"></script>
 
-div#create, div#join {
-	position: relative;
-	left: 25%;
-	text-align: center;
-	border: 2px blue solid;
-	background-color: steelblue;
-	color: white;
-	border-radius: 5px;
-	width: 50%;
-	padding: 20px;
-}
+<script type="text/javascript" src="dataStore.js"></script>
+<script type="text/javascript" src="selection.js"></script>
+<script type="text/javascript" src="charting.js"></script>
+<script type="text/javascript" src="appearance.js"></script>
+<script type="text/javascript" src="broadcast.js"></script>
 
-span.label {
-	display: inline-block;
-	width: 150px;
-	text-align: right;
-	padding-right: 10px;
-}
 
-input, select {
-	width: 300px;
-}
-
-button {
-	margin-top: 30px;
-}
-</style>
-<script src="jquery.js"></script>
 <script type="text/javascript">
-var datasets = {"efashion":"Fashion", "shopping":"Shopping Center"};
+var datasets = {"efashion":"Fashion", "shopping_complete":"Shopping Center"};
+var dataset_dimensions = {"efashion":{"dimension": ["Year", "Quarter", "Lines", "State"], "measure":["Sales revenue#"]},
+			"shopping_complete":{"dimension": ["Gender", "Age Group", "Shopping Mall", "Frequency"], "measure":["Average Rating"]}};
 var my_id = -1;
+var my_session = -1;
 var my_dataset = '';
+var my_othersname = 'Others';
 $(document).ready (function () {
+	$("#brushing").hide();
 	$("create [name='dataset']").html("");
 	$.each(Object.keys(datasets), function (i, v) { $("#create [name='dataset']").append("<option value='" + v + "'>" + datasets[v] + "</option>"); });
 	fill_sessions ()
@@ -71,8 +51,7 @@ $(document).ready (function () {
 			return;<option value="efashion">Fashion</option>
 		}
 		$.ajax('../../server/brushing/joinsession.php?name=' + name + '&session=' + session, 
-			{ "dataType":"json", "success": function (data) { my_id = data.id; my_dataset = data.dataset; } });
-		$("#login").html("");
+			{ "dataType":"json", "success": function (data) { my_session = session; my_id = data.id; my_dataset = data.dataset; jump_to_brushing(); } });
 	});
 });
 
@@ -81,27 +60,96 @@ function fill_sessions () {
 	$.ajax('../../server/brushing/listsession.php', 
 		{ "dataType":"json", "success": function (data) { $.each(data, function (i, v) { $("#join [name='session']").append("<option value='" + v.id + "'>" + v.name + " (" + datasets[v.dataset] + ")</option>"); }); } });
 }
+
+var store;
+var temp;
+var my_selection = new selection();
+var other_selection = new selection();
+var base_selection = my_selection;
+var hub = new broadcast();
+function jump_to_brushing () {
+	$("#login").hide();
+	$("#brushing").show();
+	store = new dataStore(my_dataset + ".json", loaded);
+}
+
+function loaded (success) {
+	if (!success)
+		alert ("no data loaded!");
+	$("#stacked").change(function () {
+		hub.changeAttr("isStacked", $("#stacked").is(":checked"));
+		hub.broadcast();
+	});
+	
+	// default drawing
+	var dimensions = dataset_dimensions[my_dataset].dimension;
+	var measure = dataset_dimensions[my_dataset].measure[0];
+	for (var i = 0; i < 4; i ++) {
+		var _chart = new chart ("bar", dimensions[i], null, measure, "sum", store, base_selection);
+		_chart.isStacked = false;
+		hub.addChart(_chart);
+		_chart.draw($("#main_chart"+(i+1)));
+	}
+
+	setTimeout("download_selection();", 2000);
+}
+
+function upload_selection () {
+	$.ajax("../../server/brushing/setselection.php?session="+my_session+"&user="+my_id+"&selection="+JSON.stringify(my_selection.selection),
+		{ "success": function (data) { if (data.length > 0) alert ("failure with error: " + data); } });
+}
+
+function download_selection () {
+	$.ajax("../../server/brushing/getselection.php?session="+my_session+"&user="+my_id,
+		{ "dataType":"json", 
+			"error": function (jqXHR, textStatus, errorThrown) { $("#status").html("Not Connected"); alert(jqXHR + " " + textStatus + " " + errorThrown); }, 
+			"success": function (data) { 
+				$("#status").html("Not Connected"); 
+				if (data.length > 0) { 
+					my_othersname = data[0].name;
+					var temp_other_selection = data[0].selection.replace(/'/g, "\"");
+					if (temp_other_selection == "")
+						temp_other_selection = "{}";
+					if (JSON.stringify(other_selection.selection) != temp_other_selection) {
+						other_selection.selection = JSON.parse(data[0].selection.replace(/'/g, "\"")); 
+						hub.broadcast();
+					}
+				} 
+				$("#status").html("Connected"); 
+				setTimeout("download_selection();", 2000); } 
+		}
+	);
+}
 </script>
 </head>
 
 <body>
 <div id="login">
-<div id="create">
-<h1>Create a new session</h1>
-<span class="label">Session Name:</span><input name="sessionname" /><br/>
-<span class="label">Dataset:</span><select name="dataset">
-</select><br/>
-<button id="create_btn">Create</button>
+	<div id="create">
+	<h1>Create a new session</h1>
+	<span class="label">Session Name:</span><input name="sessionname" /><br/>
+	<span class="label">Dataset:</span><select name="dataset">
+	</select><br/>
+	<button id="create_btn">Create</button>
+	</div>
+	<h1>or</h1>
+	<div id="join">
+	<h1>Join an existing one</h1>
+	<span class="label">Name:</span><input name="name" /><br/>
+	<span class="label">Session Name:</span><select name="session">
+	<!-- sample <option value="1">test</option>-->
+	</select><br/>
+	<button id="join_btn">Join</button>
+	</div>
 </div>
-<h1>or</h1>
-<div id="join">
-<h1>Join an existing one</h1>
-<span class="label">Name:</span><input name="name" /><br/>
-<span class="label">Session Name:</span><select name="session">
-<!-- sample <option value="1">test</option>-->
-</select><br/>
-<button id="join_btn">Join</button>
-</div>
+
+<div id="brushing">
+	<span id="selection"></span><br/>
+	<div class="chart" id="main_chart1"></div>
+	<div class="chart" id="main_chart2"></div>
+	<div class="chart" id="main_chart3"></div>
+	<div class="chart" id="main_chart4"></div>
+	<br/><span id="status">Connected</span>
 </div>
 </body>
 </html>

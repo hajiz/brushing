@@ -1,3 +1,3 @@
 <?php
-$preserve_selection = TRUE;
+$preserve_selection = FALSE;
 ?>

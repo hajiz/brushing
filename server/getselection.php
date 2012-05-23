@@ -24,13 +24,13 @@
 	echo "[";
 	foreach($result as $u) {
 		if ($user != $u['id'] && $u['name'] != NULL) {
-			$diff = abs(strtotime($current_date) - strtotime($user['last_update']));
+			$diff = abs(strtotime($current_date) - strtotime($u['last_update']));
 			if ($preserve_selection || $diff < $threshold) {
 				if ($first)
 					$first = FALSE;
 				else
 					echo ",";
-				echo '{"name":"'.$u['name'].'", "id":'.$u['id'].', "selection":"'.$u['selection'].'"}';
+				echo '{"name":"'.$u['name'].'", "id":'.$u['id'].', "selection":"'.str_replace("\"", "'", $u['selection']).'"}';
 			}
 		}
 	}

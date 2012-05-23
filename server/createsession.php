@@ -16,7 +16,7 @@
 	if (isset($_GET['threshold']))
 		$threshold = $_GET['threshold'];
 	else
-		$threshold = 10;
+		$threshold = 4;
 
 	if (exists("SELECT * FROM session WHERE name='$name'"))
 		executeQuery("UPDATE session SET threshold=$threshold, max_participant=$max, dataset='$dataset' WHERE name='$name'");

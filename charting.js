@@ -195,6 +195,5 @@ chart.prototype.selectionChanged = function (column, value) {
 		base_selection.clear();
 		base_selection.append(column, [value], false);
 	}
-	$("#selection").html("Yours {" + my_selection.toString() + "}, Others {" + other_selection.toString() + "}");
 	hub.broadcast();
 };

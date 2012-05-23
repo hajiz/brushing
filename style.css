@@ -1,4 +1,4 @@
-div {
+div.chart {
 	border: 1px solid;
 	width: 40%;
 	height: 40%;
@@ -35,4 +35,38 @@ body {
 button.highlighted {
 	color: red;
 	background-color: white;
+}
+
+body {
+	margin: 50px;
+}
+h1 {
+	text-align:center;
+}
+
+div#create, div#join {
+	position: relative;
+	left: 25%;
+	text-align: center;
+	border: 2px blue solid;
+	background-color: steelblue;
+	color: white;
+	border-radius: 5px;
+	width: 50% !important;
+	padding: 20px;
+}
+
+span.label {
+	display: inline-block;
+	width: 150px;
+	text-align: right;
+	padding-right: 10px;
+}
+
+input, select {
+	width: 300px;
+}
+
+button {
+	margin-top: 30px;
 }

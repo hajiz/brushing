@@ -27,6 +27,8 @@
 		$diff = abs(strtotime($current_date) - strtotime($user['last_update']));
 		if ($diff > $threshold) {
 			executeQuery("UPDATE user SET name='$name', last_update='$current_date' WHERE id=".$user['id']." AND session_id=$session");
+			if (! $preserve_selection || strcmp($user['name'], $name) != 0)
+				executeQuery("UPDATE user SET selection=NULL WHERE id=".$user['id']." AND session_id=$session");
 			die("{\"dataset\":\"$dataset\", \"id\":".$user['id']."}");
 		}
 	}
