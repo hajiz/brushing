@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>My Charting Library</title>
+<title>Enter brushing app</title>
 <link href="style.css" rel="stylesheet" />
 <script type="text/javascript" src="d3.js"></script>
 <script type="text/javascript" src="jquery.js"></script>
@@ -11,107 +11,145 @@
 <script type="text/javascript" src="appearance.js"></script>
 <script type="text/javascript" src="broadcast.js"></script>
 
+
 <script type="text/javascript">
+var datasets = {"efashion":"Fashion", "shopping_complete":"Shopping Center"};
+var dataset_dimensions = {"efashion":{"dimension": ["Year", "Quarter", "Lines", "State"], "measure":["Sales revenue#"]},
+			"shopping_complete":{"dimension": ["Gender", "Age Group", "Shopping Mall", "Frequency"], "measure":["Average Rating"]}};
+var my_id = -1;
+var my_session = -1;
+var my_dataset = '';
+var my_othersname = 'Others';
+$(document).ready (function () {
+	$("#brushing").hide();
+	$("create [name='dataset']").html("");
+	$.each(Object.keys(datasets), function (i, v) { $("#create [name='dataset']").append("<option value='" + v + "'>" + datasets[v] + "</option>"); });
+	fill_sessions ()
+	$("#create_btn").click(function () {
+		var name = $('#create [name="sessionname"]').val();
+		if (name.length < 1) {
+			alert('You should enter a name for the session');
+			return;
+		}
+		var dataset = $('#create [name="dataset"]').val();
+		$.ajax('http://142.104.68.169/server/brushing/createsession.php?name=' + name + '&dataset=' + dataset, 
+			{
+				"success": function (data) { if (data.length != 0) alert("failure with error: " + data); }
+			});
+		fill_sessions();
+	});
+	
+	$("#join_btn").click(function () {
+		var name = $('#join [name="name"]').val();
+		if (name.length < 1) {
+			alert('Enter your name please');
+			return;
+		}
+		var session = $('#join [name="session"]').val();
+		if (session == null || session.length < 1) {
+			alert('First create a session');
+			return;<option value="efashion">Fashion</option>
+		}
+		$.ajax('../../server/brushing/joinsession.php?name=' + name + '&session=' + session, 
+			{ "dataType":"json", "success": function (data) { my_session = session; my_id = data.id; my_dataset = data.dataset; jump_to_brushing(); } });
+	});
+});
+
+function fill_sessions () {
+	$("#join [name='session']").html("");
+	$.ajax('../../server/brushing/listsession.php', 
+		{ "dataType":"json", "success": function (data) { $.each(data, function (i, v) { $("#join [name='session']").append("<option value='" + v.id + "'>" + v.name + " (" + datasets[v.dataset] + ")</option>"); }); } });
+}
+
 var store;
 var temp;
 var my_selection = new selection();
 var other_selection = new selection();
 var base_selection = my_selection;
 var hub = new broadcast();
-$(document).ready(function () {
-	store = new dataStore("efashion.json", loaded);
-});
+function jump_to_brushing () {
+	$("#login").hide();
+	$("#brushing").show();
+	store = new dataStore(my_dataset + ".json", loaded);
+}
 
 function loaded (success) {
 	if (!success)
 		alert ("no data loaded!");
-// 	var s = new selection ("Year", [2002]);
-// 	s.append("Quarter", ["Q1", "Q2"]);
-// 	
-// 	var ss = new selection ("Year", [2003]);
-// 	ss.append("Quarter", ["Q1", "Q2"]);
-// 	
-// 	var awesome = store.getAggregatedColumns([{"name":"Quarter", "aggregate":null},{"name":"Profit#", "aggregate":"sum"}], ["Quarter"], [s, ss, new combined_selection(s, ss, "xor"), new all_selector()]);
-// 	temp = awesome;
-// 	return;
-// 	alert(s);
-// 	alert(s.contains({"Name":"Amir", "Age": 12}));
-// 	s.remove("Name", ["Amir"]);
-// 	alert(s);
-// 	alert(s.contains({"Name":"Amir", "Age": 12}));
-// 	temp = s;
-	/*var list = store.getColumns();
-	$.each(list, function(i, v) {
-		if (store.getColumn(v).type == "interval")
-			$("#yselect").append("<option>"+v+"</option>");
-		else
-			$("#xselect").append("<option>"+v+"</option>");
-	});
-	if (store.getColumn($("#xselect").val()).type == "nominal")
-		$("#aggregation").hide();
-	else
-		$("#aggregation").show();
-	$("#change1").click(function () {
-		var chart1 = new chart ("bar", $("#xselect").val(), null, $("#yselect").val(), $("#aggregation").val(), store, base_selection);
-		chart1.isStacked = $("#stacked").is(":checked");
-		hub.addChart(chart1);
-		chart1.draw($("#main_chart1"));
-	});
-	$("#change2").click(function () {
-		var chart2 = new chart ("bar", $("#xselect").val(), null, $("#yselect").val(), $("#aggregation").val(), store, base_selection);
-		chart2.isStacked = $("#stacked").is(":checked");
-		hub.addChart(chart2);
-		chart2.draw($("#main_chart2"));
-	});
-	$("#xselect").change(function () {
-		if (store.getColumn($(this).val()).type == "nominal")
-			$("#aggregation").hide();
-		else
-			$("#aggregation").show();
-	});*/
 	$("#stacked").change(function () {
 		hub.changeAttr("isStacked", $("#stacked").is(":checked"));
 		hub.broadcast();
 	});
-	$("#my").click(function () { base_selection = my_selection; $(".highlighted").removeClass("highlighted"); $(this).addClass("highlighted"); });
-	$("#other").click(function () { base_selection = other_selection; $(".highlighted").removeClass("highlighted"); $(this).addClass("highlighted"); });
 	
 	// default drawing
-	var dimensions = ["Year", "Quarter", "Lines", "State"];
-	var measure = "Sales revenue#";
-	//var dimensions = ["Gender", "Shopping Mall", "Transport", "Frequency"];
-	//var measure = "Average Rating";
+	var dimensions = dataset_dimensions[my_dataset].dimension;
+	var measure = dataset_dimensions[my_dataset].measure[0];
 	for (var i = 0; i < 4; i ++) {
 		var _chart = new chart ("bar", dimensions[i], null, measure, "sum", store, base_selection);
-		_chart.isStacked = $("#stacked").is(":checked");
+		_chart.isStacked = false;
 		hub.addChart(_chart);
 		_chart.draw($("#main_chart"+(i+1)));
 	}
-	
-	//var chart1 = new chart ("bar", "Department", null, "Age", "sum", store);
-	//chart1.draw($("#main_chart"));
+
+	setTimeout("download_selection();", 2000);
+}
+
+function upload_selection () {
+	$.ajax("../../server/brushing/setselection.php?session="+my_session+"&user="+my_id+"&selection="+JSON.stringify(my_selection.selection),
+		{ "success": function (data) { if (data.length > 0) alert ("failure with error: " + data); } });
+}
+
+function download_selection () {
+	$.ajax("../../server/brushing/getselection.php?session="+my_session+"&user="+my_id,
+		{ "dataType":"json", 
+			"error": function (jqXHR, textStatus, errorThrown) { $("#status").html("Not Connected"); alert(jqXHR + " " + textStatus + " " + errorThrown); }, 
+			"success": function (data) { 
+				$("#status").html("Not Connected"); 
+				if (data.length > 0) { 
+					my_othersname = data[0].name;
+					var temp_other_selection = data[0].selection.replace(/'/g, "\"");
+					if (temp_other_selection == "")
+						temp_other_selection = "{}";
+					if (JSON.stringify(other_selection.selection) != temp_other_selection) {
+						other_selection.selection = JSON.parse(data[0].selection.replace(/'/g, "\"")); 
+						hub.broadcast();
+					}
+				} 
+				$("#status").html("Connected"); 
+				setTimeout("download_selection();", 2000); } 
+		}
+	);
 }
 </script>
 </head>
+
 <body>
-<!--
-X axis:
-<select id="xselect"></select><br>
-Y axis:
-<select id="yselect"></select>
-<select id="aggregation">
-<option value="sum">Sum</option>
-<option value="average">Average</option>
-<option value="min">Min</option>
-<option value="max">Max</option>
-</select>
-<br>-->
-<!--<button id="change1">Show in 1st</button><button id="change2">Show in 2nd</button>--><input id="stacked" type="checkbox">Stacked</input>
-<span id="selection"></span><br>
-<button id="my" class="highlighted">Your Selection</button><button id="other">Other's Selection</button><br>
-<div id="main_chart1"></div>
-<div id="main_chart2"></div>
-<div id="main_chart3"></div>
-<div id="main_chart4"></div>
+<div id="login">
+	<div id="create">
+	<h1>Create a new session</h1>
+	<span class="label">Session Name:</span><input name="sessionname" /><br/>
+	<span class="label">Dataset:</span><select name="dataset">
+	</select><br/>
+	<button id="create_btn">Create</button>
+	</div>
+	<h1>or</h1>
+	<div id="join">
+	<h1>Join an existing one</h1>
+	<span class="label">Name:</span><input name="name" /><br/>
+	<span class="label">Session Name:</span><select name="session">
+	<!-- sample <option value="1">test</option>-->
+	</select><br/>
+	<button id="join_btn">Join</button>
+	</div>
+</div>
+
+<div id="brushing">
+	<span id="selection"></span><br/>
+	<div class="chart" id="main_chart1"></div>
+	<div class="chart" id="main_chart2"></div>
+	<div class="chart" id="main_chart3"></div>
+	<div class="chart" id="main_chart4"></div>
+	<br/><span id="status">Connected</span>
+</div>
 </body>
 </html>
