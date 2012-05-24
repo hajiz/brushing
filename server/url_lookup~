@@ -3,4 +3,4 @@ http://142.104.68.169/server/brushing/createsession.php?name=test&dataset=shoppi
 http://142.104.68.169/server/brushing/listsession.php
 http://142.104.68.169/server/brushing/getselection.php?session=1&user=1
 http://142.104.68.169/server/brushing/setselection.php?session=2&user=1&selection={%22a%22:%22b%22}
-http://142.104.68.169/server/brushing/log.php	POST : session=2&user=1&log={%22a%22:%22b%22}
+http://142.104.68.169/server/brushing/log.php	POST = session=2&user=1&log={%22a%22:%22b%22}

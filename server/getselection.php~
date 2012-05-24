@@ -18,7 +18,7 @@
 	foreach($result as $s) {
 		$threshold = $s['threshold'];
 	}
-	executeQuery("UPDATE `user` SET last_update='$current_date' WHERE session_id=$session AND id=$user");
+	executeQuery("UPDATE `user` SET selection='$selection', last_update='$current_date' WHERE session_id=$session AND id=$user");
 	$result = runQuery("SELECT * FROM user WHERE session_id=$session");
 	$first = TRUE;
 	echo "[";

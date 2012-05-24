@@ -195,6 +195,6 @@ chart.prototype.selectionChanged = function (column, value) {
 		base_selection.clear();
 		base_selection.append(column, [value], false);
 	}
-	log("selection changed to " + JSON.stringify(base_selection.selection));
+	log("selection changed to " + base_selection.selection);
 	hub.broadcast();
 };

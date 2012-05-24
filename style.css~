@@ -73,11 +73,11 @@ button {
 
 span#status {
 	position: fixed;
-	right: 70px;
-	bottom: 20px;
+	right: 50px;
+	bottom: 30px;
 }
 button#log {
 	position: fixed;
-	right: 0px;
+	right: 50px;
 	bottom: 20px;
 }
