@@ -11,16 +11,24 @@
 <script type="text/javascript" src="appearance.js"></script>
 <script type="text/javascript" src="broadcast.js"></script>
 <script type="text/javascript" src="logger.js"></script>
+<script type="text/javascript" src="chartDrawer.js"></script>
 
 
 <script type="text/javascript">
-var datasets = {"efashion":"Fashion", "shopping_complete":"Shopping Center"};
-var dataset_dimensions = {"efashion":{"dimension": ["Year", "Quarter", "Lines", "State"], "measure":["Sales revenue#"]},
-			"shopping_complete":{"dimension": ["Gender", "Age Group", "Shopping Mall", "Frequency"], "measure":["Average Rating"]}};
+var datasets = {"efashion":"Fashion Dataset", "shopping_complete":"Shopping Center", "carbon": "Carbon Emission", "smoking_small":"Smoking, small version",
+		"baseball": "Baseball Dataset", "cereal": "Cereal Dataset", "earthquake":"Earthquake Dataset", "nhl":"NHL Dataset", "sleeping": "Sleeping Patterns"};
+var dataset_dimensions = {"efashion":{"dimension": ["Year", "Quarter", "Lines", "State"], "measure":["Sales revenue#"], "aggregation":"sum"},
+			"shopping_complete":{"dimension": ["Gender", "Age Group", "Shopping Mall", "Frequency"], "measure":["Average Rating"], "aggregation":"average"},
+			"carbon":{"dimension": ["Country"], "measure": ["Total CO2, 2005, million tonnes", "Cars per 1000 people"], "aggregation":"sum"},
+			"smoking_small":{"dimension":["Gender", "Race", "Age", "Smoked > 100 Cigarettes in Lifetime"], "measure":["Cholesterol (mg/100mL)"], "aggregation":"sum"},
+			"baseball":{"dimension":["Year", "League", "Rank", "Fielding Percentage"], "measure":["Wins"], "aggregation":"sum"}};
 var my_id = -1;
 var my_session = -1;
 var my_dataset = '';
 var my_othersname = 'Others';
+var last_moved = new Date();
+var last_clicked = new Date();
+var draw_separate = false;
 $(document).ready (function () {
 	$("#brushing").hide();
 	$("create [name='dataset']").html("");
@@ -57,8 +65,9 @@ $(document).ready (function () {
 		var session = $('#join [name="session"]').val();
 		if (session == null || session.length < 1) {
 			alert('First create a session');
-			return;<option value="efashion">Fashion</option>
+			return;
 		}
+		draw_separate = ($("#login [name='draw_separate']").is(":checked"));
 		$.ajax('../../server/brushing/joinsession.php?name=' + name + '&session=' + session, 
 			{ "dataType":"json", "success": function (data) { my_session = session; my_id = data.id; my_dataset = data.dataset; jump_to_brushing(); } });
 	});
@@ -76,29 +85,61 @@ var my_selection = new selection();
 var other_selection = new selection();
 var base_selection = my_selection;
 var hub = new broadcast();
+var alternative_hub = new broadcast();
 function jump_to_brushing () {
 	$("#login").hide();
 	$("#brushing").show();
-	store = new dataStore(my_dataset + ".json", loaded);
+	store = new dataStore("data/" + my_dataset + ".json", loaded);
 }
 
 function loaded (success) {
 	if (!success)
 		alert ("no data loaded!");
-	$("#stacked").change(function () {
-		hub.changeAttr("isStacked", $("#stacked").is(":checked"));
-		hub.broadcast();
-	});
 	
 	// default drawing
 	var dimensions = dataset_dimensions[my_dataset].dimension;
-	var measure = dataset_dimensions[my_dataset].measure[0];
-	for (var i = 0; i < 4; i ++) {
-		var _chart = new chart ("bar", dimensions[i], null, measure, "sum", store, base_selection);
-		_chart.isStacked = false;
-		hub.addChart(_chart);
-		_chart.draw($("#main_chart"+(i+1)));
+	var measures = dataset_dimensions[my_dataset].measure;
+	var max = dimensions.length;
+	if (max < measures.length) max = measures.length;
+	if (draw_separate && max > 2) max = 2;
+	for (var i = 0; i < max; i ++) {
+		var dimension, measure;
+		if (i < dimensions.length) dimension = dimensions[i];
+		else dimension = dimensions[0];
+		if (i < measures.length) measure = measures[i];
+		else measure = measures[0];
+		var _chart = chartDrawer ("bar", dimension, null, measure, dataset_dimensions[my_dataset].aggregation, 
+				store, hub, my_selection, other_selection, true, !draw_separate, $("#stacked").is(":checked"), true, "#main_chart"+(i+1));
 	}
+	if (draw_separate) {
+		for (var i = 0; i < max; i ++) {
+			var dimension, measure;
+			if (i < dimensions.length) dimension = dimensions[i];
+			else dimension = dimensions[0];
+			if (i < measures.length) measure = measures[i];
+			else measure = measures[0];
+			var _chart = chartDrawer ("bar", dimension, null, measure, dataset_dimensions[my_dataset].aggregation, 
+				store, alternative_hub, my_selection, other_selection, false, true, $("#stacked").is(":checked"), false, "#main_chart"+(i+3));
+		}
+	}
+
+	$(document).mousemove(function () {
+		var now = new Date();
+		var diff = (now.getTime() - last_moved.getTime());
+		var threshold = 5 * 1000;
+		if (diff > threshold)
+			log("Mouse stopped for " + (diff / 1000) + " seconds from " + last_moved.toString());
+		last_moved = now;
+	});
+
+	$(document).click(function () {
+		var now = new Date();
+		var diff = (now.getTime() - last_clicked.getTime());
+		var threshold = 5 * 1000;
+		if (diff > threshold)
+			log("No click for " + (diff / 1000) + " seconds from " + last_clicked.toString());
+		last_clicked = now;
+	});
 
 	setTimeout("download_selection();", 2000);
 }
@@ -122,6 +163,7 @@ function download_selection () {
 					if (JSON.stringify(other_selection.selection) != temp_other_selection) {
 						other_selection.selection = JSON.parse(temp_other_selection); 
 						hub.broadcast();
+						alternative_hub.broadcast();
 					}
 				} else {
 					// reset others selection
@@ -129,6 +171,7 @@ function download_selection () {
 					if (JSON.stringify(other_selection.selection) != "{}") {
 						other_selection.selection = {};
 						hub.broadcast();
+						alternative_hub.broadcast();
 					}
 				}
 				$("#status").html("Connected"); 
@@ -156,14 +199,16 @@ function download_selection () {
 	<!-- sample <option value="1">test</option>-->
 	</select><br/>
 	<button id="join_btn">Join</button>
+	<input name="draw_separate" type="checkbox">draw separate</input>
+	<input id="stacked" type="checkbox">draw stacked</input>
 	</div>
 </div>
 
 <div id="brushing">
 	<span id="selection"></span><br/>
 	<div class="chart" id="main_chart1"></div>
-	<div class="chart" id="main_chart2"></div>
 	<div class="chart" id="main_chart3"></div>
+	<div class="chart" id="main_chart2"></div>
 	<div class="chart" id="main_chart4"></div>
 	<br/><span id="status">Connected</span><button id="log">Log</button>
 </div>

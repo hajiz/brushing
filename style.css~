@@ -11,8 +11,13 @@ body {
 .bar rect {
 }
 
-.bar text.value {
+text.value {
 	fill: white;
+	font: 10px sans-serif;
+}
+
+.y.axis text {
+	font: 8px sans-serif;
 }
 
 .axis {
@@ -73,11 +78,11 @@ button {
 
 span#status {
 	position: fixed;
-	right: 50px;
-	bottom: 30px;
+	right: 70px;
+	bottom: 20px;
 }
 button#log {
 	position: fixed;
-	right: 50px;
+	right: 0px;
 	bottom: 20px;
 }

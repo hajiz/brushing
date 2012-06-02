@@ -11,8 +11,12 @@ body {
 .bar rect {
 }
 
-.bar text.value {
-	fill: white;
+text.value {
+	font: 10px sans-serif;
+}
+
+.y.axis text {
+	font: 8px sans-serif;
 }
 
 .axis {

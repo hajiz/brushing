@@ -6,8 +6,9 @@
 	// sets:
 	// 	log, session, user beside user name and current time
 
-	die('bye');
-	$method = $_GET;
+	include_once('db.inc.php');
+
+	$method = $_POST;
 	$log = $method['log'];
 	$session = $method['session'];
 	$user = $method['user'];
@@ -19,7 +20,8 @@
 	
 	$result = runQuery("SELECT name FROM user WHERE id=$user AND session_id=$session");
 	$user_name = 'unregistered';
-	for ($result as $u) $user_name = $u['name'];
+	foreach ($result as $u) 
+		$user_name = $u['name'];
 
 	executeQuery("INSERT INTO log (log, session, user, user_name, created_at) VALUES ('$log', $session, $user, '$user_name', '$current_date')");
 ?>

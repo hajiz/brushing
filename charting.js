@@ -1,9 +1,11 @@
-function draw (data, label_column, value_column, container, coloring, selection_listener) {
+function draw (data, label_column, value_column, container, coloring, selection_listener, int_axis) {
 	// coloring is optional and contains {color, opacity, stackon} options
 	// stackon can be: base, previous, or a number indicating index of basis of stacking
 	// for now just base and previous is defined
 	// selection_listener is also optional and sets a listener to click event on bars
-	$(container).html("");
+	$(container).html(value_column + " based on " + label_column);
+	
+	int_axis = int_axis || false;
 	
 	if (coloring == undefined || ! coloring.length)
 		coloring = [{"color":"steelblue", "opacity":1, "stackon":"base"}];
@@ -14,10 +16,26 @@ function draw (data, label_column, value_column, container, coloring, selection_
 		height = $(container).height() - margin.top - margin.bottom;
 
 	var format = function (value) {
-		if (value < 1000) return value;
-		if (value > 1000 && value < 1000000) return Math.round(value /1000) + "K";
-		if (value > 1000000) return Math.round(value/1000000) + "M";
+		if (value < 1000) return d3.format(".1f")(value);
+		if (value > 1000 && value < 1000000) return d3.format(".1f")(value / 1000) + "K";
+		if (value > 1000000) return d3.format(".1f")(value/1000000) + "M";
 		return value;
+	};
+	
+	var rangeformat = function (value) {
+		if (! value.indexOf || value.indexOf("~") == -1) return value;
+		var start = value.split("~")[0];
+		var end = value.split("~")[1];
+		if (int_axis) {
+			start = parseInt(start);
+			end = parseInt(end);
+		} else {
+			start = parseFloat(start);
+			start = d3.format(".2f")(start);
+			end = parseFloat(end);
+			end = d3.format(".2f")(end);
+		}
+		return start + "~" + end;
 	};
 
 	var x = d3.scale.linear()
@@ -34,7 +52,8 @@ function draw (data, label_column, value_column, container, coloring, selection_
 	var yAxis = d3.svg.axis()
 		.scale(y)
 		.orient("left")
-		.tickSize(0);
+		.tickSize(0)
+		.tickFormat(rangeformat);
 
 	var svg = d3.select($(container).get(0)).append("svg")
 		.attr("width", width + margin.right + margin.left)
@@ -102,8 +121,11 @@ function draw (data, label_column, value_column, container, coloring, selection_
 				else
 					return "none";
 			})
-			.on("click", function (d) { 
-				selection_listener.selectionChanged(label_column, $(this).attr("data-label"));
+			.on("click", function (d) {
+				if ($(this).attr("data-label").indexOf("~") != -1) {
+					selection_listener.selectionChanged(label_column, true, $(this).attr("data-label").split("~")[0], $(this).attr("data-label").split("~")[1]);
+				} else
+					selection_listener.selectionChanged(label_column, false, $(this).attr("data-label"));
 			});
 			
 		if (v.text == "end")
@@ -126,7 +148,7 @@ function draw (data, label_column, value_column, container, coloring, selection_
 		.call(yAxis);
 }
 
-function chart (type, x, x_aggregate, y, y_aggregate, store, selection_object) {
+function chart (type, x, x_aggregate, y, y_aggregate, store, selection_object, hub_object, selections, colorings) {
 	this.type = type;
 	this.x = x;
 	this.x_aggregate = x_aggregate;
@@ -135,8 +157,10 @@ function chart (type, x, x_aggregate, y, y_aggregate, store, selection_object) {
 	this.store = store;
 	this.container = null;
 	this.selection = selection_object || new selection ();
+	this.hub = hub_object || new broadcast();
 	
-	this.isStacked = false;
+	this.selections = selections || [];
+	this.colorings = colorings || [];
 	
 	var object = this;
 	
@@ -148,53 +172,61 @@ function chart (type, x, x_aggregate, y, y_aggregate, store, selection_object) {
 		return true;
 	};
 	
+	this.setDrawingSelections = function (selections) {
+		// selections as [{"selection":selection, "drawing":drawing}, ...]
+		var object = this;
+		this.selections = [];
+		this.colorings = [];
+		$.each(selections, function (i, s) {
+			object.selections.push(s.selection);
+		});
+	};
+	
 	this.draw = function (container) {
-		var highlighting_opacity = 0.1;
 		this.container = container;
 		// $(this.container).html("validate result: " + this.validate() + "<br>");
 		// $(this.container).append("drawing " + this.type + " chart of " + this.x + " of type " + this.store.getColumn(x).type);
 		// draw using drawing object
-		if (this.isStacked) {
-			var result = this.store.getAggregatedColumns(this.compact(), [this.x], 
-									[new all_selector(), 
-									new combined_selection(my_selection, other_selection, "not"), 
-									new combined_selection(my_selection, other_selection, "and"), 
-									new combined_selection(other_selection, my_selection, "not")]);
-			var coloring = [{"color":"white", "border":"black solid", "opacity":1,"stackon":"base", "text":"none"}, 
-				{"color":"red", "border":"none", "opacity":1,"stackon":"base", "text":"none"}, 
-				{"color":"red", "border":"blue dashed", "opacity":highlighting_opacity,"stackon":"previous", "text":"none"},
-				{"color":"none", "border":"blue dashed", "opacity":highlighting_opacity,"stackon":"previous", "text":"none"}];
-		} else {
-			var result = this.store.getAggregatedColumns(this.compact(), [this.x], 
-									[new all_selector(),  
-									my_selection,
-									other_selection]);
-			var coloring = [{"color":"white", "border":"black solid", "opacity":1,"stackon":"base", "text":"none"}, 
-				{"color":"red", "border":"none", "opacity":1,"stackon":"base", "text":"end"},
-				{"color":"blue", "border":"blue dashed", "opacity":highlighting_opacity,"stackon":"base", "text":"none"}];
-		}
+		var result = this.store.getAggregatedColumns(this.compact(), [this.x], this.selections);
 		if (this.type == "bar")
-			draw(result, this.x, this.y, this.container, coloring, this);
+			draw(result, this.x, this.y, this.container, this.colorings, this, (this.store.getColumn(this.x).valuetype == "integer"));
 	};
 	
 	this.redraw = function () {
 		this.draw(this.container);
-	};true
+	};
 	
 	this.compact = function () {
 		return [{"name":this.x, "aggregate":this.x_aggregate}, {"name":this.y, "aggregate":this.y_aggregate}];
 	};
 }
 
-chart.prototype.selectionChanged = function (column, value) {
-	if (this.store.getColumn(column).valuetype == "integer")
-		value = parseInt(value);
-	if (base_selection.hasValue(column, value)) {
-		base_selection.remove(column, [value]);
+chart.prototype.selectionChanged = function (column, range, value, endvalue) {
+	if (!range) {
+		if (this.store.getColumn(column).valuetype == "integer")
+			value = parseInt(value);
+		if (this.store.getColumn(column).valuetype == "float")
+			value = parseFloat(value);
+		if (this.selection.hasValue(column, value)) {
+			this.selection.remove(column, [value]);
+		} else {
+			this.selection.clear();
+			this.selection.append(column, [value], false);
+		}
+		log("selection changed to " + JSON.stringify(base_selection.selection));
+		this.hub.broadcast();
 	} else {
-		base_selection.clear();
-		base_selection.append(column, [value], false);
+		if (this.store.isNumeric(column))
+			value = parseFloat(value);
+		if (this.store.isNumeric(column))
+			endvalue = parseFloat(endvalue);
+		if (this.selection.hasRange(column, value, endvalue)) {
+			this.selection.remove(column, [value, endvalue]);
+		} else {
+			this.selection.clear();
+			this.selection.append(column, [value, endvalue], true);
+		}
+		log("selection changed to " + JSON.stringify(base_selection.selection));
+		this.hub.broadcast();
 	}
-	log("selection changed to " + JSON.stringify(base_selection.selection));
-	hub.broadcast();
 };

@@ -5,7 +5,7 @@ function selection (attr, values, isrange) {
 	this.append = function (attr, values, isrange) {
 		isrange = isrange || false;
 		if (! (attr in this.selection))
-			this.selection[attr] = {"isrange":"false", "values":[]};
+			this.selection[attr] = {"isrange":isrange, "values":[]};
 		if (!isrange) {
 			this.selection[attr].values = this.selection[attr].values.concat(values);
 			this.selection[attr].isrange = false;
@@ -39,6 +39,16 @@ function selection (attr, values, isrange) {
 			return false;
 		return ($.inArray(value, this.selection[attr].values) != -1);
 	};
+	this.hasRange = function (attr, start, end) {
+		if (! (attr in this.selection))
+			return false;
+		var out = false;
+		$.each(this.selection[attr].values, function (i, v) {
+			if (v.start == start && v.end == end)
+				out = true;
+		});
+		return out;
+	};
 	if (attr)
 		this.append(attr, values, isrange);
 }
@@ -63,7 +73,7 @@ selection.prototype.contains = function (record) {
 		if (v.isrange) {
 			var temp = false;
 			$.each(v.values, function (ii, vv) {
-				if (record[i] >= vv.start && record[i] <= vv.end)
+				if (record[i] >= vv.start && record[i] < vv.end)
 					temp = true;
 			});
 			if (!temp) out = false;
