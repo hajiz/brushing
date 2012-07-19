@@ -1,5 +1,6 @@
 <html>
 <head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <title>Brushing App</title>
 <link href="style.css" rel="stylesheet" />
 <script type="text/javascript" src="d3.js"></script>
@@ -11,6 +12,7 @@
 <script type="text/javascript" src="appearance.js"></script>
 <script type="text/javascript" src="broadcast.js"></script>
 <script type="text/javascript" src="logger.js"></script>
+<script type="text/javascript" src="animation.js"></script>
 <script type="text/javascript" src="chartDrawer.js"></script>
 <script type="text/javascript" src="utility.js"></script>
 
@@ -88,6 +90,7 @@ var my_othersname = 'Others';
 var last_moved = new Date();
 var last_clicked = new Date();
 var draw_separate = false;
+var anim = new animation();
 $(document).ready (function () {
 	$("#brushing").hide();
 	$("create [name='dataset']").html("");
@@ -100,7 +103,12 @@ $(document).ready (function () {
 		});
 	});
 	$("#log, #status").hide();
-	$(document).keypress(function (e) { if(e.charCode == 108) $("#log, #status").toggle(); });
+	$(document).keypress(function (e) { 
+		if(e.charCode == 108) $("#log, #status").toggle();
+		if(e.charCode == 112) {
+			anim.play();
+		}
+	});
 	$("#create_btn").click(function () {
 		var name = $('#create [name="sessionname"]').val();
 		if (name.length < 1) {
@@ -150,6 +158,8 @@ var store;
 var temp;
 var my_selection = new selection();
 var other_selection = new selection();
+var history_selection = [];
+var history_count = 5;
 var base_selection = my_selection;
 var hub = new broadcast();
 var alternative_hub = new broadcast();
@@ -163,23 +173,33 @@ function loaded (success) {
 	if (!success)
 		alert ("no data loaded!");
 	
-	// default drawing
-	var dimensions = dataset_dimensions[my_dataset].dimension;
-	var measures = dataset_dimensions[my_dataset].measure;
-	var max = dimensions.length;
-	if (max < measures.length) max = measures.length;
-	if (draw_separate && max > 2) max = 2;
-	for (var i = 0; i < max; i ++) {
-		var dimension, measure;
-		if (i < dimensions.length) dimension = dimensions[i];
-		else dimension = dimensions[0];
-		if (i < measures.length) measure = measures[i];
-		else measure = measures[0];
-		var _chart = chartDrawer ("bar", dimension, null, measure, dataset_dimensions[my_dataset].aggregation, 
-				store, hub, my_selection, other_selection, true, ($("#join [name='type']").val() != "none") && !draw_separate, $("#stacked").is(":checked"), true, "#main_chart"+(i+1));
-		_chart.drawSelfSelectionOnly = ($("#join [name='type']").val() == "selection");
-	}
-	if (draw_separate) {
+	if ($("#join [name='type']").val() == "history") {
+		alert("historically");
+		for (var i = 0; i < history_count; i ++)
+			history_selection.push(new selection());
+		var dimensions = dataset_dimensions[my_dataset].dimension;
+		var measures = dataset_dimensions[my_dataset].measure;
+		var max = dimensions.length;
+		if (max < measures.length) max = measures.length;
+		if (draw_separate && max > 2) max = 2;
+		for (var i = 0; i < max; i ++) {
+			var dimension, measure;
+			if (i < dimensions.length) dimension = dimensions[i];
+			else dimension = dimensions[0];
+			if (i < measures.length) measure = measures[i];
+			else measure = measures[0];
+			var _chart = new chart("bar", dimension, null, measure, dataset_dimensions[my_dataset].aggregation, store, my_selection, hub, make_history_selections(), make_history_colorings());
+			_chart.drawSelfSelectionOnly = true;
+			hub.addChart(_chart);
+			_chart.draw($("#main_chart"+(i+1)));
+		}
+	} else {
+		// default drawing
+		var dimensions = dataset_dimensions[my_dataset].dimension;
+		var measures = dataset_dimensions[my_dataset].measure;
+		var max = dimensions.length;
+		if (max < measures.length) max = measures.length;
+		if (draw_separate && max > 2) max = 2;
 		for (var i = 0; i < max; i ++) {
 			var dimension, measure;
 			if (i < dimensions.length) dimension = dimensions[i];
@@ -187,7 +207,19 @@ function loaded (success) {
 			if (i < measures.length) measure = measures[i];
 			else measure = measures[0];
 			var _chart = chartDrawer ("bar", dimension, null, measure, dataset_dimensions[my_dataset].aggregation, 
-				store, alternative_hub, my_selection, other_selection, false, true, $("#stacked").is(":checked"), false, "#main_chart"+(i+3));
+					store, hub, my_selection, other_selection, true, ($("#join [name='type']").val() != "none") && !draw_separate, $("#stacked").is(":checked"), true, "#main_chart"+(i+1));
+			_chart.drawSelfSelectionOnly = ($("#join [name='type']").val() == "selection");
+		}
+		if (draw_separate) {
+			for (var i = 0; i < max; i ++) {
+				var dimension, measure;
+				if (i < dimensions.length) dimension = dimensions[i];
+				else dimension = dimensions[0];
+				if (i < measures.length) measure = measures[i];
+				else measure = measures[0];
+				var _chart = chartDrawer ("bar", dimension, null, measure, dataset_dimensions[my_dataset].aggregation, 
+					store, alternative_hub, my_selection, other_selection, false, true, $("#stacked").is(":checked"), false, "#main_chart"+(i+3));
+			}
 		}
 	}
 
@@ -233,6 +265,24 @@ function loaded (success) {
 	setTimeout("download_selection();", 2000);
 }
 
+function make_history_selections () {
+	var selections = [new all_selector()];
+	selections.push(my_selection);
+	for (var i = 0; i < history_count; i ++) {
+		selections.push(history_selection[i]);
+	}
+	return selections;
+}
+
+function make_history_colorings () {
+	var colorings = [{"color":"white", "border":"black", "opacity":1,"stackon":"base", "text":"none"}];
+	colorings.push({"color":"red", "border":"none", "opacity":1,"stackon":"base", "text":"end"});
+	for (var i = 0; i < history_count; i ++) {
+		colorings.push({"color":"blue", "border":"none", "opacity":(0.5 - i / (2*history_count)),"stackon":"base", "text":"none"});
+	}
+	return colorings;
+}
+
 function upload_selection () {
 	$.ajax("server/setselection.php?session="+my_session+"&user="+my_id+"&selection="+JSON.stringify(my_selection.selection),
 		{ "success": function (data) { if (data.length > 0) alert ("failure with error: " + data); } });
@@ -243,7 +293,10 @@ function download_selection () {
 		{ "dataType":"json", 
 			"error": function (jqXHR, textStatus, errorThrown) { $("#status").html("Not Connected"); alert(jqXHR + " " + textStatus + " " + errorThrown); }, 
 			"success": function (data) { 
-				$("#status").html("Not Connected"); 
+				$("#status").html("Not Connected");
+				if ($("#join [name='type']").val() == "history") {
+					alternative_download(data); return;
+				}
 				if (data.length > 0) { 
 					my_othersname = data[0].name;
 					var temp_other_selection = data[0].selection.replace(/'/g, "\"");
@@ -268,6 +321,44 @@ function download_selection () {
 		}
 	);
 }
+
+function alternative_download (data) {
+	if (data.length > 0) { 
+		my_othersname = data[0].name;
+		var temp_other_selection = data[0].selection.replace(/'/g, "\"");
+		if (temp_other_selection == "")
+			temp_other_selection = "{}";
+		for (var i = 0; i < history_count; i ++) {
+			if (JSON.stringify(history_selection[i].selection) == temp_other_selection) {
+				// bring up this selection
+				for (var j = i; j < history_count - 1; j ++)
+					history_selection[j].selection = history_selection[j+1].selection;
+				break;
+			}
+		}
+		for (var i = history_count - 2; i >= 0; i --) {
+			history_selection[i+1].selection = history_selection[i].selection;
+		}
+		history_selection[0].selection = JSON.parse(temp_other_selection);
+		hub.broadcast();
+	} else {
+		// reset others selection
+		my_othersname = 'Others';
+		for (var i = 0; i < history_count; i ++)
+			history_selection[i].selection = {};
+		hub.broadcast();
+	}
+	$("#status").html("Connected"); 
+	setTimeout("download_selection();", 1000);
+}
+
+function summary () {
+	var out = "";
+	for (var i = 0; i < history_count; i ++) {
+		out += JSON.stringify(history_selection[i].selection);
+	}
+	return out;
+}
 </script>
 </head>
 
@@ -290,6 +381,7 @@ function download_selection () {
 	<span class="label">Type:</span><select name="type">
 		<option value="all">All</option>
 		<option value="selection">Selection</option>
+		<option value="history">History</option>
 		<option value="none">None</option>
 	</select><br/>
 	<div style="margin-top: 30px;">

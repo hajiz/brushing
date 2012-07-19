@@ -198,11 +198,14 @@ function chart (type, x, x_aggregate, y, y_aggregate, store, selection_object, h
 		// draw using drawing object
 		var temp_selections = this.selections.slice(0);
 		var temp_colorings = this.colorings.slice(0);
-		if (temp_selections.length == 3 && this.drawSelfSelectionOnly)
-			if (keys(this.selections[2].selection).indexOf(this.x) == -1) {
-				temp_selections.splice(2,1);
-				temp_colorings.splice(2,1);
-			}
+		if ((temp_selections.length == 3 || temp_selections.length == history_count+2) && this.drawSelfSelectionOnly) {
+			for (var i = 2; i < temp_selections.length; i ++)
+				if (keys(temp_selections[i].selection).indexOf(this.x) == -1) {
+					temp_selections.splice(i,1);
+					temp_colorings.splice(i,1);
+					i --;
+				}
+		}
 		var result = this.store.getAggregatedColumns(this.compact(), [this.x], temp_selections);
 		if (this.type == "bar")
 			draw(result, this.x, this.y, this.container, temp_colorings, this, (this.store.getColumn(this.x).valuetype == "integer"));
