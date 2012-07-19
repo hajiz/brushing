@@ -76,7 +76,8 @@ dataStore.prototype.getColumn = function (column_name) {
 	return out;
 };
 
-dataStore.prototype.getAggregatedColumns = function (columns, over, selections) {
+dataStore.prototype.getAggregatedColumns = function (columns, over, selections, sort) {
+	sort = true;
 	var all_selector = function () { this.columns = function () { return []; }; this.contains = function (record) { return true; }; };
 	selections = selections || [new all_selector ()];
 	if (selections.length == 0)
@@ -150,9 +151,11 @@ dataStore.prototype.getAggregatedColumns = function (columns, over, selections) 
 			});
 			out[index] = object;
 		});
-		temp = count;
+		temp = out;
 		var refined = [];
 		$.each(out, function (i, v) {
+			var place = 0;
+			$.each(out, function (ii, vv) { if (ii < i) place ++; });
 			if ($.isEmptyObject(v)) return;
 			if (chunk) {
 				$.each(selections, function (s_i, s_v) {
@@ -164,13 +167,20 @@ dataStore.prototype.getAggregatedColumns = function (columns, over, selections) 
 			$.each(column_names, function (ii, vv) {
 				if(aggregation[vv] == "average") {
 					$.each(selections, function (s_i, s_v) {
-						if (v[vv][s_i] != undefined && count[v[over][s_i]] != undefined && count[v[over][s_i]][s_i] != undefined) {
-							v[vv][s_i] = v[vv][s_i] / count[v[over][s_i]][s_i];
+						if (v[vv][s_i] != undefined && count[i] != undefined && count[i][s_i] != undefined) {
+							v[vv][s_i] = v[vv][s_i] / count[i][s_i];
+						}
+					});
+				}
+				if(aggregation[vv] == "count") {
+					$.each(selections, function (s_i, s_v) {
+						if (count[i] != undefined && count[i][s_i] != undefined) {
+							v[vv][s_i] = count[i][s_i];
 						}
 					});
 				}
 			});
-			refined.push(v);
+			refined[place] = v;
 		});
 		return refined;
 	}
@@ -178,6 +188,8 @@ dataStore.prototype.getAggregatedColumns = function (columns, over, selections) 
 };
 
 dataStore.prototype.isNumeric = function (column) {
+	if (this.getColumn(column) == null)
+		alert("[" + column + "]");
 	if (this.getColumn(column).valuetype == "integer" || this.getColumn(column).valuetype == "float")
 		return true;
 	return false;

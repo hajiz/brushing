@@ -1,0 +1,178 @@
+<html>
+<head>
+<style>
+div#main {
+	border: 1px solid;
+	background-color: #DDDDDD;
+}
+
+div.column {
+	font-size: 12px;
+}
+
+span.title {
+	font-weight: bold;
+	cursor: pointer;
+}
+
+div.values {
+	background-color: #AAAAFF;
+	margin-left:50px;
+}
+</style>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="d3.js"></script>
+<script type="text/javascript">
+	var temp;
+	var g_data, g_headers;
+	var temp_repository = [];
+	
+	$(document).ready(function () {
+		$("#readfile").click(function () {
+			$("div#main").html("");
+			var filename = $("#file").val();
+			$.ajax(filename, {
+				"dataType": "json",
+				"error": function (jqXHR, textStatus, errorThrown) {
+					alert(jqXHR + "\nStatus: " + textStatus + "\nError: " + errorThrown);
+				}, 
+				"success": initializeUI
+			});
+		});
+		
+		$("#write").click(write);
+		
+		$("#include_all").change(function () {
+			$("input.include").attr("checked", $(this).is(":checked"));
+		});
+	});
+	
+	function initializeUI (data) {
+		g_data = data;
+		var headers = Object.keys(data[0]);
+		$.each(data, function (row_id, row) {
+			$.each(Object.keys(row), function (key_id, key) {
+				if (headers.indexOf(key) == -1) {
+					headers.push(key);
+				}
+			});
+		});
+		g_headers = headers;
+		$("#main").html("<span style='font-size:10px;'>Inc Date</span>");
+		$.each (headers, function (column_id, column) {
+			var id = column2id(column);
+			$("#main").append("<div class='column' id='" + id + "'><input type='checkbox' checked='on' class='include' /><input type='checkbox' class='date' />" + column + "</div>");
+		});
+	}
+	
+	function write() {
+		var new_data = [];
+		var new_headers = [];
+		$.each(g_data, function (row_id, row) {
+			var new_row = {};
+			$.each(g_headers, function (column_id,column) {
+				if (shouldInclude(column)) {
+					if (isDate(column)) {
+						addDateParts(new_row, column, row[column], new_headers);
+					} else {
+						new_row[column] = row[column];
+						if (new_headers.indexOf(column) == -1)
+							new_headers.push(column);
+					}
+				}
+			});
+			new_data.push(new_row);
+		});
+		csvwriter(new_data, new_headers);
+// 		jsonwriter(new_data, new_headers);
+	}
+	
+	function jsonwriter (data, headers) {
+		$("#final").html(JSON.stringify(data));
+	}
+	
+	function csvwriter (data, headers) {
+		$("#final").html("");
+		$.each(headers, function (i, v) {
+			$("#final").append(v + ",");
+		});
+		$("#final").append("<br/>");
+		$.each(data, function (row_id, row) {
+			$.each(headers, function (i, v) {
+				var value = row[v];
+				if (value == undefined)
+					value = null;
+				if (value != null && value.indexOf && value.indexOf(",") != -1)
+					value = "\"" + value + "\"";
+				$("#final").append(value + ",");
+			});
+			$("#final").append("<br/>");
+		});
+	}
+	
+	function addDateParts (row, column, date, new_headers) {
+		//alert(date);
+		if (new_headers.indexOf(column + " Year") == -1) {
+			new_headers.push(column + " Year");
+			new_headers.push(column + " Month");
+			new_headers.push(column + " Day");
+			new_headers.push(column + " Quarter");
+		}
+		if (date == null) {
+			alert(date);
+			row[column + " Year"] = null;
+			row[column + " Month"] = null;
+			row[column + " Day"] = null;
+			row[column + " Quarter"] = null;
+			return;
+		}
+		row[column + " Year"] = new Date(date).getFullYear();
+		row[column + " Month"] = new Date(date).getMonth() + 1;
+		row[column + " Day"] = new Date(date).getDate();
+		row[column + " Quarter"] = Math.floor((new Date(date).getMonth()) / 3) + 1;
+	}
+	
+	function shouldInclude (column) {
+		var id = column2id(column);
+		if ($("div#" + id + " input.include").is(":checked"))
+			return true;
+		return false;
+	}
+	
+	function isDate (column) {
+		var id = column2id(column);
+		if ($("div#" + id + " input.date").is(":checked"))
+			return true;
+		return false;
+	}
+
+	function column2id (column) {
+		return column.split(" ").join("_").split("/").join("_");
+	}
+	
+	function map2string (map) {
+		var out = "";
+		var first = true;
+		$.each(map, function (index, row) {
+			if (first)
+				first = false;
+			else
+				out += " ";
+			out += "<input class='value' showing=\"" + index + "\" type='checkbox' checked='true'/><label>" + index + "(" + row + ")</label>";
+		});
+		return out;
+	}
+</script>
+</head>
+<body>
+<input id="file" value="data/US/EXIM-s.json"></input>
+<button id="readfile">Submit</button>
+<button id="write">Write</button>
+<input id="include_all" type="checkbox" checked="on" /><label for="include_all">Toggle Include</label>
+<span id="status"></span>
+<div id="main">
+</div>
+<div id="final" style="font-size:5px;">
+</div>
+</body>
+</html>

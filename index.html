@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Enter brushing app</title>
+<title>Brushing App</title>
 <link href="style.css" rel="stylesheet" />
 <script type="text/javascript" src="d3.js"></script>
 <script type="text/javascript" src="jquery.js"></script>
@@ -12,16 +12,75 @@
 <script type="text/javascript" src="broadcast.js"></script>
 <script type="text/javascript" src="logger.js"></script>
 <script type="text/javascript" src="chartDrawer.js"></script>
+<script type="text/javascript" src="utility.js"></script>
 
 
 <script type="text/javascript">
 var datasets = {"efashion":"Fashion Dataset", "shopping_complete":"Shopping Center", "carbon": "Carbon Emission", "smoking_small":"Smoking, small version",
-		"baseball": "Baseball Dataset", "cereal": "Cereal Dataset", "earthquake":"Earthquake Dataset", "nhl":"NHL Dataset", "sleeping": "Sleeping Patterns"};
+		"baseball": "Baseball Dataset", "cereal": "Cereal Dataset", "earthquake":"Earthquake Dataset", "nhl":"NHL Dataset", "sleeping": "Sleeping Patterns",
+		"cospace":"History Navigation Study Results", "cospace_changed":"History Navigation Study Results", "export2": "US Export Data"};
 var dataset_dimensions = {"efashion":{"dimension": ["Year", "Quarter", "Lines", "State"], "measure":["Sales revenue#"], "aggregation":"sum"},
 			"shopping_complete":{"dimension": ["Gender", "Age Group", "Shopping Mall", "Frequency"], "measure":["Average Rating"], "aggregation":"average"},
 			"carbon":{"dimension": ["Country"], "measure": ["Total CO2, 2005, million tonnes", "Cars per 1000 people"], "aggregation":"sum"},
 			"smoking_small":{"dimension":["Gender", "Race", "Age", "Smoked > 100 Cigarettes in Lifetime"], "measure":["Cholesterol (mg/100mL)"], "aggregation":"sum"},
-			"baseball":{"dimension":["Year", "League", "Rank", "Fielding Percentage"], "measure":["Wins"], "aggregation":"sum"}};
+			"baseball":{"dimension":["Year", "League", "Rank", "Fielding Percentage"], "measure":["Wins"], "aggregation":"sum"},
+			"cospace":{"dimension":["Group", "Participant", "Access Mode", "Phase", "Action", "Collaboration Style"], "measure":["Histogram"], "aggregation":"count"},
+			"cospace_changed":{"dimension":["Groups", "Participant", "Access Mode", "Minute", "Action", "Collaboration Style"], "measure":["Histogram"], "aggregation":"count"},
+			"export2":{"dimension":["Decision Year", "Quarter", "Country", "Brokered?", "Decision Authority", "Contract Type"], "measure":["Histogram"], "aggregation":"count"}};
+
+var dataset_questions = {"cospace": {
+				1:[
+					"What <span class='key_dimension'>action(s)</span> happened in <span class='key_value'>remote</span> access mode? Sort them by their occurrence.",
+					"In what <span class='key_dimension'>phase</span> users have used <span class='key_value'>local</span> history <span style='text-decoration:underline'>much more</span> than <span class='key_value'>remote</span> ones?",
+					"What is the <span class='key_dimension'>collaboration style</span> during <span class='key_value'>discussion</span> part?",
+					"Which <span class='key_dimension'>action(s)</span> has been done by participant <span class='key_value'>P2</span> more than by <span class='key_value'>P1</span>?",
+					"Which <span class='key_dimension'>groups</span> have done <span class='key_value'>note taking</span> more than <span class='key_value'>manual save</span>?",
+					"What <span class='key_dimension'>action(s)</span> happened in <span class='key_value'>discussion</span> phase more than <span class='key_value'>data mining</span> phase?"
+				], 
+				2:[
+					"In which <span class='key_dimension'>groups</span> participant <span class='key_value'>P2</span> was more active than participant <span class='key_value'>P1</span>?",
+					"Which <span class='key_dimension'>action(s)</span> has been done by participant <span class='key_value'>P2</span> more than by <span class='key_value'>P1</span>?",
+					"Which <span class='key_dimension'>groups</span> have done <span class='key_value'>note taking</span> more than <span class='key_value'>manual save</span>?",
+					"In what <span class='key_dimension'>phase</span> users have used <span class='key_value'>local</span> history <span style='text-decoration:underline'>much more</span> than <span class='key_value'>remote</span> ones?",
+					"Which <span class='key_dimension'>collaboration style</span> has a higher count of actions on <span class='key_value'>local</span> history?",
+					"In <span class='key_value'>tight</span> collaboration, which <span class='key_dimension'>participant</span> is more active?"
+				]},
+			"efashion": {
+				1:[
+					"In which <span class='key_dimension'>quarter</span> <span class='key_value'>accessories</span> has been bought most?",
+					"Which <span class='key_dimension'>quarter(s)</span> were more beneficial in <span class='key_value'>2002</span> than <span class='key_value'>2003</span>?"
+				],
+				2:[
+					"In which <span class='key_dimension'>quarter</span> <span class='key_value'>accessories</span> has been bought most?",
+					"Which <span class='key_dimension'>quarter(s)</span> were more beneficial in <span class='key_value'>2002</span> than <span class='key_value'>2003</span>?"
+				]},
+			"smoking_small": {
+				1:[
+					"For people between <span class='key_value'>55</span> and <span class='key_value'>72</span> years old which <span class='key_dimension'>gender</span> has the highest cholesterol?",
+					"In which <span class='key_dimension'>age</span> people who <span class='key_value'>smoke more than 100 (Smoked>100 = Yes)</span> have the highest cholesterol?"
+				],
+				2:[
+					"For people between <span class='key_value'>55</span> and <span class='key_value'>72</span> years old which <span class='key_dimension'>gender</span> has the highest cholesterol?",
+					"In which <span class='key_dimension'>age</span> people who <span class='key_value'>smoke more than 100 (Smoked>100 = Yes)</span> have the highest cholesterol?"
+				]},
+			"export2": {
+				1:[
+					"Which <span class='key_dimension'>decision authority</span> considers almost same number of contracts among different <span class='key_dimension'>quarters</span>?",
+					"Which <span class='key_dimension'>decision authority</span> has considered more contracts in decision year <span class='key_value'>2011</span>?",
+					"What is the <span class='key_dimension'>type</span> of contracts authorized by <span class='key_value'>Board</span>?",
+					"Which <span class='key_dimension'>type</span> of contracts are <span class='key_value'>not brokered</span> at all?",
+					"Which <span class='key_dimension'>countries</span> have more <span class='key_value'>short term</span> contracts than <span class='key_value'>medium term</span> ones?",
+					"In which <span class='key_dimension'>quarter</span>, number of <span class='key_value'>non-brokered</span> deals is more than <span class='key_value'>brokered</span> ones?"
+				], 
+				2:[
+					"Which <span class='key_dimension'>countries</span> have more <span class='key_value'>short term</span> contracts than <span class='key_value'>medium term</span> ones?",
+					"Which <span class='key_dimension'>country</span> didn't have any import from US in decision year <span class='key_value'>2010</span>?",
+					"In which <span class='key_dimension'>quarter</span>, number of <span class='key_value'>non-brokered</span> deals is more than <span class='key_value'>brokered</span> ones?",
+					"Which <span class='key_dimension'>decision authority</span> considers almost same number of contracts among different <span class='key_dimension'>quarters</span>?",
+					"Which <span class='key_dimension'>decision authority</span> is mostly responsible for <span class='key_value'>brokered</span> deals?",
+					"Which <span class='key_dimension'>countries</span> have same number of contracts between <span class='key_value'>quarter 1</span> and <span class='key_value'>quarter 2</span>?"
+				]}
+			};
 var my_id = -1;
 var my_session = -1;
 var my_dataset = '';
@@ -32,10 +91,10 @@ var draw_separate = false;
 $(document).ready (function () {
 	$("#brushing").hide();
 	$("create [name='dataset']").html("");
-	$.each(Object.keys(datasets), function (i, v) { $("#create [name='dataset']").append("<option value='" + v + "'>" + datasets[v] + "</option>"); });
+	$.each(keys(datasets), function (i, v) { $("#create [name='dataset']").append("<option value='" + v + "'>" + datasets[v] + "</option>"); });
 	fill_sessions ();
 	$("#log").click(function () {
-		$.ajax("http://142.104.68.169/server/brushing/log.php", {
+		$.ajax("http://142.104.68.169/brushing/server/log.php", {
 			type:"POST",
 			data: { session: my_session, user: my_id, log: JSON.stringify(logs) }
 		});
@@ -49,7 +108,7 @@ $(document).ready (function () {
 			return;
 		}
 		var dataset = $('#create [name="dataset"]').val();
-		$.ajax('http://142.104.68.169/server/brushing/createsession.php?name=' + name + '&dataset=' + dataset, 
+		$.ajax('http://142.104.68.169/brushing/server/createsession.php?name=' + name + '&dataset=' + dataset, 
 			{
 				"success": function (data) { if (data.length != 0) alert("failure with error: " + data); }
 			});
@@ -68,14 +127,22 @@ $(document).ready (function () {
 			return;
 		}
 		draw_separate = ($("#login [name='draw_separate']").is(":checked"));
-		$.ajax('../../server/brushing/joinsession.php?name=' + name + '&session=' + session, 
-			{ "dataType":"json", "success": function (data) { my_session = session; my_id = data.id; my_dataset = data.dataset; jump_to_brushing(); } });
+		$.ajax('server/joinsession.php?name=' + name + '&session=' + session, 
+			{ 
+				"dataType":"json", 
+				"success": function (data) { 
+					my_session = session; my_id = data.id; my_dataset = data.dataset; jump_to_brushing();
+				},
+				"error": function () {
+					alert("session full");
+				}
+			});
 	});
 });
 
 function fill_sessions () {
 	$("#join [name='session']").html("");
-	$.ajax('../../server/brushing/listsession.php', 
+	$.ajax('server/listsession.php', 
 		{ "dataType":"json", "success": function (data) { $.each(data, function (i, v) { $("#join [name='session']").append("<option value='" + v.id + "'>" + v.name + " (" + datasets[v.dataset] + ")</option>"); }); } });
 }
 
@@ -109,7 +176,8 @@ function loaded (success) {
 		if (i < measures.length) measure = measures[i];
 		else measure = measures[0];
 		var _chart = chartDrawer ("bar", dimension, null, measure, dataset_dimensions[my_dataset].aggregation, 
-				store, hub, my_selection, other_selection, true, !draw_separate, $("#stacked").is(":checked"), true, "#main_chart"+(i+1));
+				store, hub, my_selection, other_selection, true, ($("#join [name='type']").val() != "none") && !draw_separate, $("#stacked").is(":checked"), true, "#main_chart"+(i+1));
+		_chart.drawSelfSelectionOnly = ($("#join [name='type']").val() == "selection");
 	}
 	if (draw_separate) {
 		for (var i = 0; i < max; i ++) {
@@ -141,16 +209,37 @@ function loaded (success) {
 		last_clicked = now;
 	});
 
+	$.each(dataset_questions[my_dataset][my_id], function (i, v) {
+		$("#question").append("<option value='" + (i + 1) + "'>Question " + (i+1) + "</option>");
+	});
+	$("#question").change(function () {
+		log("Question " + $(this).val());
+		if ($(this).val() == "-1")
+			$("#question_span").html("");
+		else
+			$("#question_span").html(dataset_questions[my_dataset][my_id][parseInt($(this).val()) - 1]);
+	});
+
+	$("button#done").click(function () {
+		$("#question").val(-1);
+		log("Question " + -1);
+		$("#question_span").html("");
+		$.ajax("http://142.104.68.169/brushing/server/log.php", {
+			type:"POST",
+			data: { session: my_session, user: my_id, log: JSON.stringify(logs) }
+		});
+	});
+
 	setTimeout("download_selection();", 2000);
 }
 
 function upload_selection () {
-	$.ajax("../../server/brushing/setselection.php?session="+my_session+"&user="+my_id+"&selection="+JSON.stringify(my_selection.selection),
+	$.ajax("server/setselection.php?session="+my_session+"&user="+my_id+"&selection="+JSON.stringify(my_selection.selection),
 		{ "success": function (data) { if (data.length > 0) alert ("failure with error: " + data); } });
 }
 
 function download_selection () {
-	$.ajax("../../server/brushing/getselection.php?session="+my_session+"&user="+my_id,
+	$.ajax("server/getselection.php?session="+my_session+"&user="+my_id,
 		{ "dataType":"json", 
 			"error": function (jqXHR, textStatus, errorThrown) { $("#status").html("Not Connected"); alert(jqXHR + " " + textStatus + " " + errorThrown); }, 
 			"success": function (data) { 
@@ -195,21 +284,38 @@ function download_selection () {
 	<div id="join">
 	<h1>Join an existing one</h1>
 	<span class="label">Name:</span><input name="name" /><br/>
-	<span class="label">Session Name:</span><select name="session">
+	<span class="label">Session Name:</span><select name="session"><br/>
 	<!-- sample <option value="1">test</option>-->
 	</select><br/>
+	<span class="label">Type:</span><select name="type">
+		<option value="all">All</option>
+		<option value="selection">Selection</option>
+		<option value="none">None</option>
+	</select><br/>
+	<div style="margin-top: 30px;">
+	<input style="width:15px;" name="draw_separate" type="checkbox"/>
+	<label>draw separate</label>
+	<input style="width:15px;" id="stacked" type="checkbox"/>
+	<label>draw stacked</label>
+	</div>
 	<button id="join_btn">Join</button>
-	<input name="draw_separate" type="checkbox">draw separate</input>
-	<input id="stacked" type="checkbox">draw stacked</input>
 	</div>
 </div>
 
 <div id="brushing">
-	<span id="selection"></span><br/>
+	<!--<span id="selection"></span><br/>-->
+	<!--<input id="question" type="textbox"></input><br/>-->
+	<div class="header">
+	<select id="question"><option value="-1">Select One Question</option></select>
+	<button id="done">Done</button>
+	<br/><br/><span id="question_span" style="margin-left: 20px;"></span><br/>
+	</div>
 	<div class="chart" id="main_chart1"></div>
-	<div class="chart" id="main_chart3"></div>
 	<div class="chart" id="main_chart2"></div>
+	<div class="chart" id="main_chart3"></div>
 	<div class="chart" id="main_chart4"></div>
+	<div class="chart" id="main_chart5"></div>
+	<div class="chart" id="main_chart6"></div>
 	<br/><span id="status">Connected</span><button id="log">Log</button>
 </div>
 </body>

@@ -1,0 +1,228 @@
+<html>
+<head>
+<style>
+div#main {
+	border: 1px solid;
+	background-color: #DDDDDD;
+}
+
+div.column {
+	font-size: 12px;
+}
+
+span.title {
+	font-weight: bold;
+	cursor: pointer;
+}
+
+div.values {
+	background-color: #AAAAFF;
+	margin-left:50px;
+}
+</style>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="d3.js"></script>
+<script type="text/javascript">
+	var temp;
+	var g_data;
+	var g_headers;
+	var temp_repository = [];
+	
+	$(document).ready(function () {
+		$("#readfile").click(function () {
+			$("div#main").html("");
+			var filename = $("#file").val();
+			$.ajax(filename, {
+				"dataType": "json",
+				"error": function (jqXHR, textStatus, errorThrown) {
+					alert(jqXHR + "\nStatus: " + textStatus + "\nError: " + errorThrown);
+				}, 
+				"success": initializeUI
+			});
+		});
+		
+		$("#refresh").click(function () {
+			reevaluate(g_headers, g_data);
+		});
+		
+		$("#write").click(function () {
+			// needs to be cleared
+			$("#final").html(JSON.stringify(temp_repository));
+		});
+		
+		$("#togglezero").change(processZeros);
+	});
+
+	function initializeUI(data) {
+		startProcessing();
+		var headers = Object.keys(data[0]);
+		$.each(data, function (row_id, row) {
+			$.each(Object.keys(row), function (key_id, key) {
+				if (headers.indexOf(key) == -1) {
+					headers.push(key);
+				}
+			});
+		});
+		
+		$.each (headers, function (column_id, column) {
+			var id = column2id(column);
+			$("div#main").append("<div class='column' id='" + id + "'></div>");
+			$("div#"+id).append("<span class='title'>" + column + "</span><input class='selectall' checked='true' type='checkbox'></input>");
+			$("div#"+id + " span.title").click(function () {
+				$(this).parent().children("div.values").toggle();
+			});
+			$("div#"+id+" input.selectall").change(function () {
+				var checked = $(this).is(":checked");
+				$(this).parent().children("div.values").children("input.value").attr("checked", checked);
+			});
+		});
+		
+		$.each (headers, function (column_id, column) {
+			var id = column2id(column);
+			var values = {};
+			$.each(data, function (row_id, row) {
+				var value = row[column];
+				if ((value + "").length == 0)
+					value = null;
+				if (values[value])
+					values[value] ++;
+				else
+					values[value] = 1;
+			});
+			$("div#"+id).append("<div class='values'>" + map2string(values) + "</div>");
+			$("div#"+id+" div.values input.value").change(function () {
+				var checked = $(this).is(":checked");
+				var value = $(this).attr("showing");
+				// Used to reevaluate on every change, now has a button on its own
+				//reevaluate(headers, data);
+			});
+		});
+		g_data = data;
+		g_headers = headers;
+		endProcessing();
+	}
+	
+	function reevaluate (headers, data) {
+		startProcessing();
+		var filtering = {};
+		$.each (headers, function (column_id, column) {
+			filtering[column] = [];
+			var id = column2id(column);
+			$("div#"+id+" div.values").children("input.value").each(function (input_id, input) {
+				if ($(input).is(":checked"))
+					filtering[column].push($(input).attr("showing"));
+// 				if ($(input).is(":checked") && $(input).attr("showing") == "null")
+// 					alert("added");
+			});
+		});
+		
+		$.each (headers, function (column_id, column) {
+			var id = column2id(column);
+			var values = {};
+			$.each(data, function (row_id, row) {
+				var filtered = false;
+				$.each(filtering, function (column, values) {
+					var v = row[column];
+					if (v === "" || v == null)
+						v = "null";
+					var temp = filtered;
+					var f1 = (filtering[column].indexOf(v+"") == -1);
+					if (f1) {
+						filtered = true;
+// 						alert(v + "\n" + filtering[column] + "\n" + column);
+					}
+				});
+				if (filtered)
+					return;
+				var value = row[column];
+				if (value == "")
+					value = null;
+				if (values[value])
+					values[value] ++;
+				else
+					values[value] = 1;
+			});
+			$("div#"+id+" div.values input.value").each(function (input_id, input) {
+				var label = $(input).next().html();
+				var value = $(input).attr("showing");
+				if (values[value] != undefined) {
+					label = label.substring(0, label.indexOf("(")+1) + "" + values[value] + ")";
+					$(input).next().html(label);
+					$(input).removeClass("zero");
+					$(input).next().removeClass("zero");
+				} else {
+					label = label.substring(0, label.indexOf("(")+1) + "" + 0 + ")";
+					$(input).next().html(label);
+					$(input).addClass("zero");
+					$(input).next().addClass("zero");
+				}
+			});
+		});
+		temp_repository = [];
+		$.each(data, function (row_id, row) {
+			var filtered = false;
+			$.each(filtering, function (column, values) {
+				var v = row[column];
+				if (v == "" || v == null)
+					v = "null";
+				var f1 = (filtering[column].indexOf("" + v) == -1);
+				if (f1) {
+					filtered = true;
+				}
+			});
+			if (! filtered)
+				temp_repository.push(row);
+		});
+		processZeros();
+		endProcessing();
+	}
+
+	function column2id (column) {
+		return column.split(" ").join("_").split("/").join("_");
+	}
+	
+	function map2string (map) {
+		var out = "";
+		var first = true;
+		$.each(map, function (index, row) {
+			if (first)
+				first = false;
+			else
+				out += " ";
+			out += "<input class='value' showing=\"" + index + "\" type='checkbox' checked='true'/><label>" + index + "(" + row + ")</label>";
+		});
+		return out;
+	}
+	
+	function startProcessing() {
+		$("span#status").html("please wait...");
+	}
+	function endProcessing() {
+		$("span#status").html("");
+	}
+	
+	function processZeros() {
+		$("input.value").show();
+		$("input.value").next().show();
+		var show = $("#togglezero").is(":checked");
+		if (!show) {
+			$("input.value.zero").hide();
+			$("input.value.zero").next().hide();
+		}
+	}
+</script>
+</head>
+<body>
+<input id="file" value="data/US/EXIM.json"></input>
+<button id="readfile">Submit</button>
+<input type="checkbox" id="togglezero" checked="on" />
+<label for="togglezero">Show Zeros</label>
+<button id="refresh">Re-Evaluate</button>
+<button id="write">Write</button>
+<span id="status"></span>
+<div id="main">
+</div>
+<div id="final" style="font-size:5px;">
+</div>
+</body>
+</html>

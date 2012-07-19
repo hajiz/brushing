@@ -1,0 +1,146 @@
+<html>
+<head>
+<title>Stats</title>
+<style>
+span {
+	margin-left: 10px;
+}
+
+table, th, td {
+	border: 1px solid;
+}
+</style>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="d3.js"></script>
+<script type="text/javascript" src="variable.js"></script>
+<script type="text/javascript">
+
+	var logs = [];
+	var questions = [];
+	
+	$(document).ready(function () {
+		$.ajax("server/listlog.php", {dataType:"json", 
+			success: function (d) { logs = d; fillOptions(); }});
+		$("div#original").hide();
+	});
+	
+	function init(index) {
+		for (var i = 1; i < 7; i++)
+			questions[i] = {"qn":i, "t":0, "ns":0};
+		var current = 0;
+		var starttime = 0;
+		$.each (json, function (i, v) {
+			if (getType(v.action) == "Question") {
+				if (current != 0) {
+					var now = new Date(v.time).getTime();
+					var diff = now - starttime;
+					questions[current].t += diff;
+				}
+				var tmp = current;
+				current = parseInt(v.action.substring(9));
+				if (isNaN(current))
+					current = tmp;
+				else
+					starttime = new Date(v.time).getTime();
+			} else if (i == json.length - 1) {
+				var now = new Date(v.time).getTime();
+				var diff = now - starttime;
+				questions[current].t += diff;
+			}
+			if (getType(v.action) == "Selection" && current != 0) {
+				questions[current].ns += 1;
+			}
+		});
+		
+		$.each (questions, function (i,v) {
+			if (v == undefined) return;
+			$("#" + index + " tr#" + i + " td.t").html(v.t / 1000);
+			$("#" + index + " tr#" + i + " td.ns").html(v.ns);
+		});
+	}
+	
+	function getGraphReady (v) {
+		var action = getType(v.action);
+		switch (action) {
+			case "Question":
+			case "Selection":
+				var start = new Date(v.time).getTime();
+				var end = new Date(v.time).getTime() + 5000;
+				break;
+			case "Pause":
+			case "Click":
+				var start = new Date(v.action.substring(v.action.indexOf("from") + 5)).getTime() + 5000;
+				var end = new Date(v.time).getTime();
+				break;
+		}
+		return {"action":action, "start":start, "end":end};
+	}
+
+	function getType (action) {
+		if (action.indexOf("Question") == 0)
+			return "Question";
+		if (action.indexOf("Mouse stopped") == 0)
+			return "Pause";
+		if (action.indexOf("No click") == 0)
+			return "Click";
+		if (action.indexOf("selection") == 0)
+			return "Selection";
+		return "undefined";
+	}
+
+	function formatTime (time) {
+		var date = new Date(time);
+		return date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
+	}
+	
+	function fillOptions () {
+		var code = $("div#original").html();
+		$.each (logs, function (i, v) {
+			//$("select#names").append("<option value='" + i + "'>" + v.name + " at " + v.time + "</option>");
+			$("#list").append(v.name + "<div id='d" + i + "'>aa</div>");
+			$("div#d" + i).html(code);
+			json = logs[i].log;
+			init("d" + i);
+		});
+		/*$("select#names").change(function () {
+			var index = $(this).val();
+			if (index == "Please Select.....") {
+				$(".t, .ns").html("0");
+				return;
+			}
+			json = logs[index].log;
+			init();
+		});*/
+	}
+</script>
+</head>
+<body>
+<div id="original">
+	<table>
+		<tr>
+			<th>Question</th><th>Time</th><th># of Selections</th>
+		</tr>
+		<tr id="1">
+			<td class="qn">1</td><td class="t">0</td><td class="ns">0</td>
+		</tr>
+		<tr id="2">
+			<td class="qn">2</td><td class="t">0</td><td class="ns">0</td>
+		</tr>
+		<tr id="3">
+			<td class="qn">3</td><td class="t">0</td><td class="ns">0</td>
+		</tr>
+		<tr id="4">
+			<td class="qn">4</td><td class="t">0</td><td class="ns">0</td>
+		</tr>
+		<tr id="5">
+			<td class="qn">5</td><td class="t">0</td><td class="ns">0</td>
+		</tr>
+		<tr id="6">
+			<td class="qn">6</td><td class="t">0</td><td class="ns">0</td>
+		</tr>
+	</table>
+</div>
+<div id="list">
+</div>
+</body>
+</html>

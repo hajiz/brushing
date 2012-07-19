@@ -90,7 +90,7 @@ selection.prototype.clear = function () {
 };
 
 selection.prototype.columns = function () {
-	return Object.keys(this.selection);
+	return keys(this.selection);
 };
 
 // combined selections

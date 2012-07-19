@@ -1,0 +1,117 @@
+<html>
+<head>
+<title>Fast charting</title>
+<style>
+div {
+	width: 400px; height: 300px; border: 1px solid; float: left;
+}
+body {
+	font-size: 8px;
+}
+</style>
+<script type="text/javascript" src="d3.js"></script>
+<script type="text/javascript" src="jquery.js"></script>
+
+<script type="text/javascript" src="dataStore.js"></script>
+<script type="text/javascript" src="selection.js"></script>
+<script type="text/javascript" src="charting.js"></script>
+<script type="text/javascript" src="appearance.js"></script>
+<script type="text/javascript" src="broadcast.js"></script>
+<script type="text/javascript" src="logger.js"></script>
+<script type="text/javascript" src="chartDrawer.js"></script>
+
+<script type="text/javascript">
+var datasets = {"efashion":"Fashion Dataset", "shopping_complete":"Shopping Center", "carbon": "Carbon Emission", "smoking_small":"Smoking, small version",
+		"baseball": "Baseball Dataset", "cereal": "Cereal Dataset", "earthquake":"Earthquake Dataset", "nhl":"NHL Dataset", "sleeping": "Sleeping Patterns", 
+		"immigration": "Immigration to Canada", "cospace":"History Navigation Study Result"};
+var store;
+var my_selection = new selection();
+var hub = new broadcast();
+$(document).ready(function () {
+	$.each(datasets, function (i, v) {
+		$("#dataset").append("<option value='"+i+"'>"+v+"</option>");
+	});
+
+	$("#dataset").change(function () {
+		$("#status").html("Loading " + "data/" + $("#dataset").val() + ".json");
+		store = new dataStore("data/" + $("#dataset").val() + ".json", init);
+	});
+
+	$("#type").val("bar");
+	$("#type").change(function () {
+		var type = $(this).val();
+		if (type == "bar") {
+			$("#measures").show();
+			$("#aggregation").show();
+		} else {
+			$("#measures").hide();
+			$("#aggregation").hide();
+		}
+	});
+	
+	$("#draw1").click(draw_1);
+	$("#draw2").click(draw_2);
+});
+
+function init (success) {
+	$("#status").html("Done with");
+	if (!success) $("#status").append("out");
+	$("#status").append(" success");
+	$("#dimensions").html("");
+	$("#measures").html("");
+	$.each(store.column_names, function (i, v) {
+		$("#dimensions").append("<option>" + v + "</option>");
+		$("#measures").append("<option>" + v + "</option>");
+	});
+}
+
+function draw_1 () { chart_draw(1); }
+function draw_2 () { chart_draw(2); }
+
+function chart_draw (index) {
+	var dimension = $("#dimensions").val();
+	var measure = $("#measures").val();
+	var aggregation = $("#aggregation").val();
+	var type = $("#type").val();
+	if (type == "bar")
+		$("#status").html("Drawing " + measure + " based on " + dimension);
+	else
+		$("#status").html("Drawing Histogram for " + dimension);
+	if (type == "bar")
+		var _chart = new chart ("bar", dimension, null, measure, aggregation, store, my_selection, hub, [new all_selector(), my_selection], [
+			{"color":"white", "border":"black", "opacity":1,"stackon":"base", "text":"none"},
+			{"color":"red", "border":"none", "opacity":1,"stackon":"base", "text":"end"}
+		]);
+	else
+		var _chart = new chart ("bar", dimension, null, "histogram", "count", store, my_selection, hub, [new all_selector(), my_selection], [
+			{"color":"white", "border":"black", "opacity":1,"stackon":"base", "text":"none"},
+			{"color":"red", "border":"none", "opacity":1,"stackon":"base", "text":"end"}
+		]);
+	hub.addChart(_chart);
+	_chart.draw("#chart" + index);
+}
+</script>
+</head>
+<body>
+<select id="dataset">
+</select>
+<span id="status">
+</span>
+
+<br/>
+<select id="type">
+<option value="bar">Bar Chart</option>
+<option value="histogram">Histogram</option>
+</select>
+<select id="dimensions"></select>
+<select id="measures"></select>
+<select id="aggregation">
+<option value="sum">Sum</option>
+<option value="average">Average</option>
+<option value="min">Min</option>
+<option value="max">Max</option>
+</select>
+<button id="draw1">Draw 1</button><button id="draw2">Draw 2</button><br/>
+<div id="chart1"></div><div id="chart2"></div>
+</body>
+</html>

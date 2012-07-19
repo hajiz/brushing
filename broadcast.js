@@ -5,8 +5,10 @@ function broadcast () {
 			this.charts.push(chart);
 	};
 	this.broadcast = function () {
-		upload_selection();
-		$("#selection").html("Yours {" + my_selection.toString() + "}, " + my_othersname + " {" + other_selection.toString() + "}");
+		if (window.upload_selection)
+			upload_selection();
+		if (window.my_selection && window.my_othersname && window.other_selection)
+			$("#selection").html("Yours {" + my_selection.toString() + "}, " + my_othersname + " {" + other_selection.toString() + "}");
 		$.each (this.charts, function (i, v) {
 			v.redraw();
 		});

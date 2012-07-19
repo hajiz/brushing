@@ -1,0 +1,175 @@
+<html>
+<head>
+<title>Log Viewer</title>
+<style>
+span {
+	margin-left: 10px;
+}
+
+div#chart_panel {
+	width: 200px;
+	height: 3500px;
+	border: 1px solid;
+	float:left;
+	margin-right: 30px;
+}
+
+div.legend {
+	width: 10px;
+	height: 10px;
+	float: left;
+	border: 1px solid;
+}
+</style>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="d3.js"></script>
+<script type="text/javascript" src="variable.js"></script>
+<script type="text/javascript">
+
+	var converted = [];
+	var logs = [];
+	
+	var legend = {"Question":"red", "Pause":"#999999", "Click":"#999999", "Selection":"blue", "undefined":"black"};
+
+	$(document).ready(function () {
+		drawLegend();
+		$.ajax("server/listlog.php", {dataType:"json", 
+			success: function (d) { logs = d; fillOptions(); }});
+	});
+	
+	function init() {
+		var base = 9999999999999;
+		$("#log_panel").html("<ul></ul>");
+		$("#chart_panel").html("");
+		$.each(json, function (i, v) {
+			switch (getType(v.action)) {
+				case 'Question':
+					$("#log_panel ul").append("<li>" + "<span style='color:" + legend[getType(v.action)] + "'>" + v.action + "</span>(" + formatTime(v.time) + ")</li>");
+					break;
+				case 'Pause':
+					$("#log_panel ul").append("<li>" + "<span style='color:" + legend[getType(v.action)] + "'>" + "Long Pause" + "</span>(" + formatTime(v.time) + ")</li>");
+					break;
+				case 'Click':
+					$("#log_panel ul").append("<li>" + "<span style='color:" + legend[getType(v.action)] + "'>" + "Just Looking" + "</span>(" + formatTime(v.time) + ")</li>");
+					break;
+				case 'Selection':
+					var selection = JSON.parse(v.action.substring(v.action.indexOf("{")));
+					var dimension = (Object.keys(selection).length > 0)?Object.keys(selection)[0]:null;
+					if (dimension != null)
+						if (selection[dimension].isrange)
+							$("#log_panel ul").append("<li>" + "<span style='color:" + legend[getType(v.action)] + "'>" + dimension + "=" + selection[dimension].values[0].start + " and " + selection[dimension].values[0].end + "</span>(" + formatTime(v.time) + ")</li>");
+						else
+							$("#log_panel ul").append("<li>" + "<span style='color:" + legend[getType(v.action)] + "'>" + dimension + "=" + selection[dimension].values + "</span>(" + formatTime(v.time) + ")</li>");
+					else
+						$("#log_panel ul").append("<li>" + "<span style='color:" + legend[getType(v.action)] + "'>" + "Empty selection" + "</span>(" + formatTime(v.time) + ")</li>");
+					break;
+				case 'undefined':
+					alert(v);
+					break;
+			}
+			if (base > new Date(v.time).getTime())
+				base = new Date(v.time).getTime();
+			var c = getGraphReady(v);
+			converted.push(c);
+		});
+		
+		var width = $("#chart_panel").width(), height = $("#chart_panel").height();
+		
+		var svg = d3.select("#chart_panel").append("svg")
+			.attr("width", width)
+			.attr("height", height)
+			.append("g")
+				.attr("transform", "translate(" + 50 + "," + 10 + ")");
+				
+		var types = ["Pause", "Click", "Selection", "Question"];
+		$.each (types, function (i, v) {
+			var bar = svg.selectAll("g." + v)
+				.data(converted)
+				.enter().append("g")
+					.attr("class", v)
+					.attr("transform", function (d) { return "translate(0, " + (d.start - base) / 500 + ")"; });
+			bar.append("rect")
+				.attr("width", 100)
+				.attr("height", function (d, i) {
+					if (d.action == v)
+						return (d.end - d.start) / 500;
+					return 0;
+				})
+				.attr("fill", function (d) {
+					return legend[d.action];
+				});
+		});
+		
+	}
+	
+	function getGraphReady (v) {
+		var action = getType(v.action);
+		switch (action) {
+			case "Question":
+			case "Selection":
+				var start = new Date(v.time).getTime();
+				var end = new Date(v.time).getTime() + 5000;
+				break;
+			case "Pause":
+			case "Click":
+				var start = new Date(v.action.substring(v.action.indexOf("from") + 5)).getTime() + 5000;
+				var end = new Date(v.time).getTime();
+				break;
+		}
+		return {"action":action, "start":start, "end":end};
+	}
+
+	function getType (action) {
+		if (action.indexOf("Question") == 0)
+			return "Question";
+		if (action.indexOf("Mouse stopped") == 0)
+			return "Pause";
+		if (action.indexOf("No click") == 0)
+			return "Click";
+		if (action.indexOf("selection") == 0)
+			return "Selection";
+		return "undefined";
+	}
+
+	function formatTime (time) {
+		var date = new Date(time);
+		return date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
+	}
+	
+	function fillOptions () {
+		$.each (logs, function (i, v) {
+			$("select#names").append("<option value='" + i + "'>" + v.name + " at " + v.time + "</option>");
+		});
+		$("select#names").change(function () {
+			var index = $(this).val();
+			if (index == "Please Select.....") {
+				$("#chart_panel").html("");
+				$("#log_panel").html("");
+				return;
+			}
+			json = logs[index].log;
+			init();
+		});
+	}
+	
+	function drawLegend () {
+		$("#legend").append("<div class='legend' style='background-color:" + legend["Question"] + ";'></div><span class='legend'>Selecting a question</span><br/>");
+		$("#legend").append("<div class='legend' style='background-color:" + legend["Pause"] + ";'></div><span class='legend'>Long pause (no action performed)</span><br/>");
+		$("#legend").append("<div class='legend' style='background-color:" + legend["Selection"] + ";'></div><span class='legend'>Brushing</span><br/>");
+		$("#legend").append("<div class='legend' style='background-color:white;'></div><span class='legend'>Nothing</span><br/>");
+	}
+</script>
+</head>
+<body>
+<select id="names">
+<option>Please Select.....</option>
+</select>
+<div id="legend">
+
+</div>
+<div id="chart_panel">
+</div>
+<div id="log_panel">
+</div>
+</body>
+</html>

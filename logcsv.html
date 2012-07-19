@@ -1,0 +1,92 @@
+<html>
+<head>
+<title>Log Viewer</title>
+<style>
+
+</style>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="d3.js"></script>
+<script type="text/javascript" src="variable.js"></script>
+<script type="text/javascript">
+
+	var logs = [];
+	
+	$(document).ready(function () {
+		$.ajax("server/listlog.php", {dataType:"json", 
+			success: function (d) { logs = d; fillOptions(); }});
+	});
+	
+	function init() {
+		$("#log_panel").html("<div></div>");
+		$.each(json, function (i, v) {
+			switch (getType(v.action)) {
+				case 'Question':
+					$("#log_panel div").append(v.action + "," + formatTime(v.time) + "<br/>");
+					break;
+				case 'Pause':
+					//$("#log_panel ul").append("<li>" + "<span>" + "Long Pause" + "</span>(" + formatTime(v.time) + ")</li>");
+					break;
+				case 'Click':
+					//$("#log_panel ul").append("<li>" + "<span>" + "Just Looking" + "</span>(" + formatTime(v.time) + ")</li>");
+					break;
+				case 'Selection':
+					var selection = JSON.parse(v.action.substring(v.action.indexOf("{")));
+					var dimension = (Object.keys(selection).length > 0)?Object.keys(selection)[0]:null;
+					$("#log_panel div").append(dimension + "<br/>");
+					/*if (dimension != null)
+						if (selection[dimension].isrange)
+							$("#log_panel ul").append("<li>" + "<span>" + dimension + "=" + selection[dimension].values[0].start + " and " + selection[dimension].values[0].end + "</span>(" + formatTime(v.time) + ")</li>");
+						else
+							$("#log_panel ul").append("<li>" + "<span>" + dimension + "=" + selection[dimension].values + "</span>(" + formatTime(v.time) + ")</li>");
+					else
+						$("#log_panel ul").append("<li>" + "<span>" + "Empty selection" + "</span>(" + formatTime(v.time) + ")</li>");
+					*/
+					break;
+				case 'undefined':
+					alert(v);
+					break;
+			}
+		});
+	}
+	
+	function getType (action) {
+		if (action.indexOf("Question") == 0)
+			return "Question";
+		if (action.indexOf("Mouse stopped") == 0)
+			return "Pause";
+		if (action.indexOf("No click") == 0)
+			return "Click";
+		if (action.indexOf("selection") == 0)
+			return "Selection";
+		return "undefined";
+	}
+
+	function formatTime (time) {
+		var date = new Date(time);
+		return date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
+	}
+	
+	function fillOptions () {
+		$.each (logs, function (i, v) {
+			$("select#names").append("<option value='" + i + "'>" + v.name + " at " + v.time + "</option>");
+		});
+		$("select#names").change(function () {
+			var index = $(this).val();
+			if (index == "Please Select.....") {
+				$("#log_panel").html("");
+				return;
+			}
+			json = logs[index].log;
+			init();
+		});
+	}
+</script>
+</head>
+<body>
+<select id="names">
+<option>Please Select.....</option>
+</select>
+<div id="log_panel">
+</div>
+</body>
+</html>

@@ -3,7 +3,10 @@ function draw (data, label_column, value_column, container, coloring, selection_
 	// stackon can be: base, previous, or a number indicating index of basis of stacking
 	// for now just base and previous is defined
 	// selection_listener is also optional and sets a listener to click event on bars
-	$(container).html(value_column + " based on " + label_column);
+	if (value_column == "Histogram")
+		$(container).html("<span class='chart_header' style='font-size: 10px;'>" + "" + label_column + "</span>");
+	else
+		$(container).html("<span class='chart_header' style='font-size: 10px;'>" + value_column + " based on <span class='key_dimension'>" + label_column + "</span></span>");
 	
 	int_axis = int_axis || false;
 	
@@ -23,7 +26,11 @@ function draw (data, label_column, value_column, container, coloring, selection_
 	};
 	
 	var rangeformat = function (value) {
-		if (! value.indexOf || value.indexOf("~") == -1) return value;
+		if (! value.indexOf || value.indexOf("~") == -1) {
+			if (value.length > 10)
+				return value.substring(0, 9) + "..";
+			return value;
+		}
 		var start = value.split("~")[0];
 		var end = value.split("~")[1];
 		if (int_axis) {
@@ -159,6 +166,8 @@ function chart (type, x, x_aggregate, y, y_aggregate, store, selection_object, h
 	this.selection = selection_object || new selection ();
 	this.hub = hub_object || new broadcast();
 	
+	this.drawSelfSelectionOnly = true;
+	
 	this.selections = selections || [];
 	this.colorings = colorings || [];
 	
@@ -187,9 +196,16 @@ function chart (type, x, x_aggregate, y, y_aggregate, store, selection_object, h
 		// $(this.container).html("validate result: " + this.validate() + "<br>");
 		// $(this.container).append("drawing " + this.type + " chart of " + this.x + " of type " + this.store.getColumn(x).type);
 		// draw using drawing object
-		var result = this.store.getAggregatedColumns(this.compact(), [this.x], this.selections);
+		var temp_selections = this.selections.slice(0);
+		var temp_colorings = this.colorings.slice(0);
+		if (temp_selections.length == 3 && this.drawSelfSelectionOnly)
+			if (keys(this.selections[2].selection).indexOf(this.x) == -1) {
+				temp_selections.splice(2,1);
+				temp_colorings.splice(2,1);
+			}
+		var result = this.store.getAggregatedColumns(this.compact(), [this.x], temp_selections);
 		if (this.type == "bar")
-			draw(result, this.x, this.y, this.container, this.colorings, this, (this.store.getColumn(this.x).valuetype == "integer"));
+			draw(result, this.x, this.y, this.container, temp_colorings, this, (this.store.getColumn(this.x).valuetype == "integer"));
 	};
 	
 	this.redraw = function () {
@@ -213,7 +229,8 @@ chart.prototype.selectionChanged = function (column, range, value, endvalue) {
 			this.selection.clear();
 			this.selection.append(column, [value], false);
 		}
-		log("selection changed to " + JSON.stringify(base_selection.selection));
+		if (window.base_selection)
+			log("selection changed to " + JSON.stringify(base_selection.selection));
 		this.hub.broadcast();
 	} else {
 		if (this.store.isNumeric(column))
@@ -226,7 +243,8 @@ chart.prototype.selectionChanged = function (column, range, value, endvalue) {
 			this.selection.clear();
 			this.selection.append(column, [value, endvalue], true);
 		}
-		log("selection changed to " + JSON.stringify(base_selection.selection));
+		if (window.base_selection)
+			log("selection changed to " + JSON.stringify(base_selection.selection));
 		this.hub.broadcast();
 	}
 };
