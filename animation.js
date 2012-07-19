@@ -3,6 +3,7 @@ function animation () {
 	this.current_timer = null;
 	this.current_index = 0;
 	this.running = false;
+	this.speed = 1.5;
 	// setTimeout(action, milis)
 	// clearTimeout(variable)
 	this.play = function () {
@@ -32,6 +33,7 @@ function animation () {
 			return;
 		}
 		var diff = new Date(this.log[this.current_index + 1].time).getTime() - new Date(this.log[this.current_index].time).getTime();
+		diff = diff / this.speed;
 		this.current_index ++;
 		var obj = this;
 		this.current_timer = setTimeout(function () { obj.next(); }, diff);
@@ -39,7 +41,6 @@ function animation () {
 	
 	this.execute = function (action) {
 		if (action.indexOf("Question ") == 0) {
-			alert(action.substring("Question ".length));
 			$("input#question").val(action.substring("Question ".length));
 			return;
 		}

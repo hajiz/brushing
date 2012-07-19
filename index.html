@@ -174,7 +174,6 @@ function loaded (success) {
 		alert ("no data loaded!");
 	
 	if ($("#join [name='type']").val() == "history") {
-		alert("historically");
 		for (var i = 0; i < history_count; i ++)
 			history_selection.push(new selection());
 		var dimensions = dataset_dimensions[my_dataset].dimension;
