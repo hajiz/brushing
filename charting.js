@@ -188,6 +188,7 @@ function chart (type, x, x_aggregate, y, y_aggregate, store, selection_object, h
 		this.colorings = [];
 		$.each(selections, function (i, s) {
 			object.selections.push(s.selection);
+			object.drawings.push(s.drawing);
 		});
 	};
 	

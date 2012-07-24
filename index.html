@@ -106,7 +106,13 @@ $(document).ready (function () {
 	$(document).keypress(function (e) { 
 		if(e.charCode == 108) $("#log, #status").toggle();
 		if(e.charCode == 112) {
-			anim.play();
+			if (anim.running)
+				anim.pause();
+			else
+				anim.play();
+		}
+		if(e.charCode == 115) {
+			anim.stop();
 		}
 	});
 	$("#create_btn").click(function () {
@@ -159,6 +165,7 @@ var temp;
 var my_selection = new selection();
 var other_selection = new selection();
 var history_selection = [];
+var history_opacity = [];
 var history_count = 5;
 var base_selection = my_selection;
 var hub = new broadcast();
